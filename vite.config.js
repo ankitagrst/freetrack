@@ -58,13 +58,12 @@ export default defineConfig({
     })
   ],
   server: {
-    port: 3000,
-    proxy: {
-      '/api': {
-        target: 'http://localhost',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/feetrack/Backend/api')
-      }
+  proxy: {
+    '/api': {
+      target: 'https://royalblue-bear-657267.hostingersite.com',
+      changeOrigin: true,
+      rewrite: path => path.replace(/^\/api/, '/Backend/api')
     }
   }
+}
 })
