@@ -1,0 +1,77 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
+import { AuthProvider } from './context/AuthContext'
+import PrivateRoute from './components/PrivateRoute'
+
+// Pages
+import Login from './pages/auth/Login'
+import Register from './pages/auth/Register'
+import Dashboard from './pages/Dashboard'
+import AdminDashboard from './pages/AdminDashboard'
+import Members from './pages/Members'
+import Payments from './pages/Payments'
+import Attendance from './pages/Attendance'
+import Expenses from './pages/Expenses'
+import Seats from './pages/Seats'
+import Notices from './pages/Notices'
+import SMS from './pages/SMS'
+import Enquiries from './pages/Enquiries'
+import Reports from './pages/Reports'
+import Settings from './pages/Settings'
+import Plans from './pages/Plans'
+
+// Layout
+import AppLayout from './components/layout/AppLayout'
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Toaster 
+          position="top-center"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+            success: {
+              iconTheme: {
+                primary: '#1B9AAA',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          
+          {/* Protected Routes */}
+          <Route element={<PrivateRoute><AppLayout /></PrivateRoute>}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/members" element={<Members />} />
+            <Route path="/payments" element={<Payments />} />
+            <Route path="/attendance" element={<Attendance />} />
+            <Route path="/expenses" element={<Expenses />} />
+            <Route path="/seats" element={<Seats />} />
+            <Route path="/notices" element={<Notices />} />
+            <Route path="/sms" element={<SMS />} />
+            <Route path="/enquiries" element={<Enquiries />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/plans" element={<Plans />} />
+          </Route>
+          
+          {/* Redirects */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
+  )
+}
+
+export default App
