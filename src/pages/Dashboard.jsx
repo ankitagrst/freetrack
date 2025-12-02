@@ -10,6 +10,8 @@ const Dashboard = () => {
   const [paymentStats, setPaymentStats] = useState(null)
   const [attendanceStats, setAttendanceStats] = useState(null)
   const [recentActivity, setRecentActivity] = useState([])
+  const [monthlyCollections, setMonthlyCollections] = useState([])
+  const [todayCollection, setTodayCollection] = useState(0)
 
   useEffect(() => {
     fetchDashboardData()
@@ -19,11 +21,12 @@ const Dashboard = () => {
     try {
       setLoading(true)
       
-      const [membersStatsRes, paymentsStatsRes, attendanceStatsRes, recentPayments] = await Promise.all([
+      const [membersStatsRes, paymentsStatsRes, attendanceStatsRes, recentPayments, monthlyStats] = await Promise.all([
         membersAPI.getStats().catch(() => ({ success: false, data: null })),
         paymentsAPI.getStats().catch(() => ({ success: false, data: null })),
         attendanceAPI.getStats().catch(() => ({ success: false, data: null })),
-        paymentsAPI.getAll({ limit: 5 }).catch(() => ({ success: false, data: [] }))
+        paymentsAPI.getAll({ limit: 5 }).catch(() => ({ success: false, data: [] })),
+        paymentsAPI.getMonthlyStats().catch(() => ({ success: false, data: [] }))
       ])
 
       if (membersStatsRes.success && membersStatsRes.data) {
@@ -32,10 +35,18 @@ const Dashboard = () => {
 
       if (paymentsStatsRes.success && paymentsStatsRes.data) {
         setPaymentStats(paymentsStatsRes.data)
+        // Extract today's collection from payment stats
+        setTodayCollection(paymentsStatsRes.data.total_today || 0)
       }
 
       if (attendanceStatsRes.success && attendanceStatsRes.data) {
         setAttendanceStats(attendanceStatsRes.data)
+      }
+
+      // Process monthly collections
+      if (monthlyStats.success && monthlyStats.data) {
+        const months = Array.isArray(monthlyStats.data) ? monthlyStats.data : monthlyStats.data.monthly || []
+        setMonthlyCollections(months.slice(0, 3)) // Last 3 months
       }
 
       // Process recent payments for activity
@@ -79,14 +90,14 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">Welcome back! Here's your library overview</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Welcome back! Here's your library overview</p>
         </div>
         <button
           onClick={fetchDashboardData}
-          className="btn btn-primary sm:w-auto"
+          className="btn btn-primary w-full sm:w-auto text-sm"
         >
           Refresh Data
         </button>
@@ -95,59 +106,59 @@ const Dashboard = () => {
       {/* Member Stats */}
       {memberStats && (
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Member Statistics</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Member Statistics</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Members</p>
-                  <p className="text-3xl font-bold text-blue-600 mt-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Total Members</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-blue-600 mt-2 break-words">
                     {memberStats.total_members || 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Users className="w-6 h-6 text-blue-600" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Active Members</p>
-                  <p className="text-3xl font-bold text-green-600 mt-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Active Members</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-green-600 mt-2 break-words">
                     {memberStats.active_members || 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <UserCheck className="w-6 h-6 text-green-600" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Expired Plans</p>
-                  <p className="text-3xl font-bold text-red-600 mt-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Expired Plans</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-red-600 mt-2 break-words">
                     {memberStats.expired_members || 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <UserX className="w-6 h-6 text-red-600" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-yellow-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border-2 border-yellow-200 p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Expiring Soon</p>
-                  <p className="text-3xl font-bold text-yellow-600 mt-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Expiring Soon</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-yellow-600 mt-2 break-words">
                     {memberStats.expiring_soon || 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Clock className="w-6 h-6 text-yellow-600" />
                 </div>
               </div>
@@ -159,64 +170,64 @@ const Dashboard = () => {
       {/* Payment Stats */}
       {paymentStats && (
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Statistics</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl shadow-sm border-2 border-emerald-200 p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Payment Statistics</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-white rounded-xl shadow-sm border-2 border-emerald-200 p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                  <p className="text-3xl font-bold text-emerald-600 mt-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Total Revenue</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-emerald-600 mt-1 sm:mt-2 break-words">
                     ₹{(paymentStats.total_year || 0).toLocaleString('en-IN')}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">This year</p>
                 </div>
-                <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <DollarSign className="w-6 h-6 text-emerald-600" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">This Month</p>
-                  <p className="text-3xl font-bold text-blue-600 mt-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">This Month</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-blue-600 mt-2 break-words">
                     ₹{(paymentStats.total_month || 0).toLocaleString('en-IN')}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">Current month</p>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Calendar className="w-6 h-6 text-blue-600" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-yellow-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border-2 border-yellow-200 p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Pending</p>
-                  <p className="text-3xl font-bold text-yellow-600 mt-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Pending</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-yellow-600 mt-2 break-words">
                     {paymentStats.pending_count || 0}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">Payments</p>
                 </div>
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <AlertCircle className="w-6 h-6 text-yellow-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Count</p>
-                  <p className="text-3xl font-bold text-purple-600 mt-2">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Total Count</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-purple-600 mt-1 sm:mt-2">
                     {paymentStats.total_count || 0}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">All payments</p>
                 </div>
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <CreditCard className="w-6 h-6 text-purple-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
                 </div>
               </div>
             </div>
@@ -224,63 +235,113 @@ const Dashboard = () => {
         </div>
       )}
 
+      {/* Collection Tracking */}  
+      <div>
+        <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Collection Tracking</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Today's Collection */}
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg p-8 text-white">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold opacity-90">Today Collection</h3>
+              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                <IndianRupee className="w-6 h-6" />
+              </div>
+            </div>
+            <p className="text-5xl font-bold mb-2">₹{todayCollection.toLocaleString('en-IN')}</p>
+            <p className="text-sm opacity-75">{format(new Date(), 'EEEE, MMMM dd, yyyy')}</p>
+          </div>
+
+          {/* Monthly Collections */}
+          <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Collections</h3>
+            <div className="space-y-3">
+              {monthlyCollections.length > 0 ? (
+                monthlyCollections.map((month, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        Collection {month.month_name || `Month ${idx + 1}`}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {month.year || new Date().getFullYear()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-indigo-600">
+                        ₹{(month.total || 0).toLocaleString('en-IN')}
+                      </p>
+                      <p className="text-xs text-gray-500">{month.count || 0} payments</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6 text-gray-500">
+                  <Calendar className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm">No collection data available</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Attendance Stats */}
       {attendanceStats && (
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Attendance Overview</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Attendance Overview</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Today Present</p>
-                  <p className="text-3xl font-bold text-green-600 mt-2">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Today Present</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-green-600 mt-1 sm:mt-2">
                     {attendanceStats.today_present || 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <UserCheck className="w-6 h-6 text-green-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <UserCheck className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Today Absent</p>
-                  <p className="text-3xl font-bold text-red-600 mt-2">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Today Absent</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-red-600 mt-1 sm:mt-2">
                     {attendanceStats.today_absent || 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                  <UserX className="w-6 h-6 text-red-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                  <UserX className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">This Month</p>
-                  <p className="text-3xl font-bold text-blue-600 mt-2">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">This Month</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-blue-600 mt-1 sm:mt-2">
                     {attendanceStats.month_count || 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-blue-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Avg Rate</p>
-                  <p className="text-3xl font-bold text-purple-600 mt-2">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Avg Rate</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-purple-600 mt-1 sm:mt-2">
                     {attendanceStats.average_rate ? `${attendanceStats.average_rate}%` : '0%'}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-purple-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
                 </div>
               </div>
             </div>

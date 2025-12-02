@@ -156,3 +156,55 @@
   }
 }
 
+/* Universal Modal and Overlay System */
+:root {
+  --bottom-nav-height: 72px;
+}
+
+/* Modal overlays - Universal fix for all modals */
+@media (max-width: 768px) {
+  /* Target all fixed overlays that should respect bottom nav */
+  .fixed.z-50[class*="bg-black"] {
+    bottom: var(--bottom-nav-height, 72px) !important;
+  }
+  
+  /* Ensure modal content has proper max height */
+  [class*="max-h-"]:has(.overflow-y-auto) {
+    max-height: calc(85vh - var(--bottom-nav-height, 72px)) !important;
+  }
+}
+
+/* Stats Cards - Universal sizing */
+.stats-card {
+  @apply bg-white rounded-xl shadow-sm border-2 p-4 sm:p-6;
+}
+
+.stats-card-header {
+  @apply flex items-center justify-between;
+}
+
+.stats-card-content {
+  @apply flex-1 min-w-0;
+}
+
+.stats-card-label {
+  @apply text-xs sm:text-sm font-medium text-gray-600;
+}
+
+.stats-card-value {
+  @apply text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 break-words;
+}
+
+.stats-card-icon {
+  @apply w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center flex-shrink-0;
+}
+
+/* Stats Grid - Universal layout */
+.stats-grid {
+  @apply grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4;
+}
+
+.stats-grid-3 {
+  @apply grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4;
+}
+

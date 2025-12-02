@@ -135,37 +135,37 @@ const Expenses = () => {
     <div className="space-y-6">
       {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-6">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-4 sm:p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total (Year)</p>
-                <p className="text-3xl font-bold text-red-600 mt-2">₹{stats.year_expense || 0}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Total (Year)</p>
+                <p className="text-2xl sm:text-3xl font-bold text-red-600 mt-1 sm:mt-2 break-words">₹{stats.year_expense || 0}</p>
               </div>
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-red-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border-2 border-orange-200 p-6">
+          <div className="bg-white rounded-xl shadow-sm border-2 border-orange-200 p-4 sm:p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">This Month</p>
-                <p className="text-3xl font-bold text-orange-600 mt-2">₹{stats.month_expense || 0}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">This Month</p>
+                <p className="text-2xl sm:text-3xl font-bold text-orange-600 mt-1 sm:mt-2 break-words">₹{stats.month_expense || 0}</p>
               </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-orange-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-6">
+          <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 sm:p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Today</p>
-                <p className="text-3xl font-bold text-blue-600 mt-2">₹{stats.today_expense || 0}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Today</p>
+                <p className="text-2xl sm:text-3xl font-bold text-blue-600 mt-1 sm:mt-2 break-words">₹{stats.today_expense || 0}</p>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <TrendingDown className="w-6 h-6 text-blue-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <TrendingDown className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
               </div>
             </div>
           </div>
@@ -271,7 +271,7 @@ const Expenses = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed top-0 left-0 right-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
           <div className="bg-white rounded-2xl max-w-2xl w-full p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">
               {currentExpense ? 'Edit Expense' : 'Add New Expense'}

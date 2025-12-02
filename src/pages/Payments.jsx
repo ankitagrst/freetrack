@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { paymentsAPI, membersAPI } from '../services/api'
-import { Plus, Search, IndianRupee, Calendar, Filter, Eye, Edit, Trash2, Receipt, CreditCard, X } from 'lucide-react'
+import { Plus, Search, IndianRupee, Calendar, Filter, Eye, Edit, Trash2, Receipt, CreditCard, X, Printer } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
+import InvoiceGenerator from '../components/InvoiceGenerator'
 
 const Payments = () => {
   const [payments, setPayments] = useState([])
@@ -25,6 +26,9 @@ const Payments = () => {
     transaction_id: '',
     notes: ''
   })
+  const [showInvoice, setShowInvoice] = useState(false)
+  const [invoiceMember, setInvoiceMember] = useState(null)
+  const [invoicePayment, setInvoicePayment] = useState(null)
 
   useEffect(() => {
     fetchData()
@@ -154,6 +158,24 @@ const Payments = () => {
     }
   }
 
+  const openInvoice = (payment) => {
+    // Find the member for this payment
+    const member = members.find(m => m.id === payment.member_id)
+    if (member) {
+      setInvoiceMember(member)
+      setInvoicePayment(payment)
+      setShowInvoice(true)
+    } else {
+      toast.error('Member information not found')
+    }
+  }
+
+  const closeInvoice = () => {
+    setShowInvoice(false)
+    setInvoiceMember(null)
+    setInvoicePayment(null)
+  }
+
   const filteredPayments = payments.filter(payment => {
     // Status filter
     const matchesStatus = filter === 'all' || payment.status === filter
@@ -200,12 +222,12 @@ const Payments = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Payments</h1>
-          <p className="text-gray-600 mt-1">Track and manage member payments</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Payments</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Track and manage payments</p>
         </div>
         <button onClick={openModal} className="btn btn-primary flex items-center gap-2">
           <Plus className="w-5 h-5" />
@@ -215,59 +237,59 @@ const Payments = () => {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-4 sm:p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Year</p>
-                <p className="text-3xl font-bold text-green-600 mt-2">
-                  ₹{parseFloat(stats.total_paid || 0).toLocaleString('en-IN')}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Year</p>
+                <p className="text-2xl sm:text-3xl font-bold text-green-600 mt-1 sm:mt-2 break-words">
+                  ₹{parseFloat(stats.total_year || 0).toLocaleString('en-IN')}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <IndianRupee className="w-6 h-6 text-green-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-6">
+          <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 sm:p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">This Month</p>
-                <p className="text-3xl font-bold text-blue-600 mt-2">
-                  ₹{parseFloat(stats.month_collection || 0).toLocaleString('en-IN')}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">This Month</p>
+                <p className="text-2xl sm:text-3xl font-bold text-blue-600 mt-1 sm:mt-2 break-words">
+                  ₹{parseFloat(stats.total_month || 0).toLocaleString('en-IN')}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-blue-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border-2 border-yellow-200 p-6">
+          <div className="bg-white rounded-xl shadow-sm border-2 border-yellow-200 p-4 sm:p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pending</p>
-                <p className="text-3xl font-bold text-yellow-600 mt-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Pending</p>
+                <p className="text-2xl sm:text-3xl font-bold text-yellow-600 mt-1 sm:mt-2">
                   {stats.pending_count || 0}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Receipt className="w-6 h-6 text-yellow-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <Receipt className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-6">
+          <div className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-4 sm:p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Count</p>
-                <p className="text-3xl font-bold text-purple-600 mt-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Count</p>
+                <p className="text-2xl sm:text-3xl font-bold text-purple-600 mt-1 sm:mt-2">
                   {payments.length}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <CreditCard className="w-6 h-6 text-purple-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
               </div>
             </div>
           </div>
@@ -428,6 +450,13 @@ const Payments = () => {
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          onClick={() => openInvoice(payment)}
+                          className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                          title="Generate Invoice"
+                        >
+                          <Printer className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => openModal(payment)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                           title="Edit"
@@ -453,7 +482,7 @@ const Payments = () => {
 
       {/* Add/Edit Payment Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed top-0 left-0 right-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
           <div className="bg-white rounded-2xl max-w-2xl w-full p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">
               {currentPayment ? 'Edit Payment' : 'Record New Payment'}
@@ -564,6 +593,15 @@ const Payments = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Invoice Generator Modal */}
+      {showInvoice && invoiceMember && invoicePayment && (
+        <InvoiceGenerator
+          member={invoiceMember}
+          payment={invoicePayment}
+          onClose={closeInvoice}
+        />
       )}
     </div>
   )

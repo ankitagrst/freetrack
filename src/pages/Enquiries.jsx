@@ -159,41 +159,49 @@ const Enquiries = () => {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-lg shadow-sm border p-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.total || 0}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Total</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{stats.total || 0}</p>
               </div>
-              <Mail className="w-8 h-8 text-blue-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                <Mail className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" />
+              </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">New</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.new_enquiries || 0}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">New</p>
+                <p className="text-2xl sm:text-3xl font-bold text-blue-600 mt-1 sm:mt-2">{stats.new_enquiries || 0}</p>
               </div>
-              <TrendingUp className="w-8 h-8 text-blue-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+              </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Converted</p>
-                <p className="text-2xl font-bold text-green-600">{stats.converted || 0}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Converted</p>
+                <p className="text-2xl sm:text-3xl font-bold text-green-600 mt-1 sm:mt-2">{stats.converted || 0}</p>
               </div>
-              <User className="w-8 h-8 text-green-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <User className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+              </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">This Month</p>
-                <p className="text-2xl font-bold text-purple-600">{stats.this_month || 0}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">This Month</p>
+                <p className="text-2xl sm:text-3xl font-bold text-purple-600 mt-1 sm:mt-2">{stats.this_month || 0}</p>
               </div>
-              <Calendar className="w-8 h-8 text-purple-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+              </div>
             </div>
           </div>
         </div>
@@ -278,7 +286,7 @@ const Enquiries = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed top-0 left-0 right-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
           <div className="bg-white rounded-2xl max-w-2xl w-full p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">

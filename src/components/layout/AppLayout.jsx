@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { 
   Menu, X, LayoutDashboard, Users, CreditCard, ClipboardCheck, 
   Receipt, Sofa, Bell, MessageSquare, HelpCircle, FileText, 
-  Settings, LogOut, BookOpen, Shield, MoreHorizontal
+  Settings, LogOut, BookOpen, Shield, MoreHorizontal, UserPlus
 } from 'lucide-react'
 
 const AppLayout = () => {
@@ -36,6 +36,7 @@ const AppLayout = () => {
       secondary: [
         { path: '/expenses', icon: Receipt, label: 'Expenses' },
         { path: '/seats', icon: Sofa, label: 'Seats' },
+        { path: '/waiting-list', icon: UserPlus, label: 'Waiting List' },
         { path: '/notices', icon: Bell, label: 'Notices' },
         { path: '/sms', icon: MessageSquare, label: 'SMS' },
         { path: '/enquiries', icon: HelpCircle, label: 'Enquiries' },
@@ -62,6 +63,8 @@ const AppLayout = () => {
     }
     updateBottomNavVar()
     window.addEventListener('resize', updateBottomNavVar)
+    // Initial check after a short delay to ensure rendering is complete
+    setTimeout(updateBottomNavVar, 100)
     return () => window.removeEventListener('resize', updateBottomNavVar)
   }, [])
 
@@ -156,8 +159,8 @@ const AppLayout = () => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto pb-20 md:pb-6">
-          <div className="p-4 md:p-6 max-w-7xl mx-auto">
+        <main className="flex-1 overflow-y-auto pb-24 md:pb-6">
+          <div className="p-4 md:p-6 max-w-7xl mx-auto mb-4">
             {/* DEV DEBUG - show user & route info on top for troubleshooting */}
             <div className="mb-4 p-3 rounded-xl bg-white shadow-sm border border-gray-100 text-xs text-gray-700 hidden md:block">
               <strong>Dev Info:</strong>
@@ -172,7 +175,7 @@ const AppLayout = () => {
         </main>
 
         {/* Bottom Navigation - Mobile Only */}
-        <nav ref={navRef} style={{ height: 'var(--bottom-nav-height)' }} className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-bottom safe-area-inset pb-4 pt-2">
+        <nav ref={navRef} style={{ height: 'var(--bottom-nav-height)' }} className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 safe-area-bottom safe-area-inset pb-4 pt-2">
           <div className="flex items-center justify-around px-2 py-1">
             {menuPrimary.map((item) => (
               <Link
@@ -210,7 +213,7 @@ const AppLayout = () => {
               style={{ bottom: 'var(--bottom-nav-height, 72px)' }}
               onClick={() => setShowMoreMenu(false)}
             />
-            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl z-[60] shadow-2xl safe-area-bottom safe-area-inset pb-6 animate-slide-up overflow-hidden border-t border-gray-200">
+            <div className="md:hidden fixed left-0 right-0 bg-white rounded-t-3xl z-[60] shadow-2xl safe-area-bottom safe-area-inset animate-slide-up overflow-hidden border-t border-gray-200" style={{ bottom: 'var(--bottom-nav-height, 72px)', paddingBottom: '1.5rem' }}>
               <div className="flex items-center justify-between p-4 border-b border-gray-200">
                 <h3 className="text-lg font-bold text-gray-900">More Options</h3>
                 <button

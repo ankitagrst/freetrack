@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { seatsAPI, membersAPI } from '../services/api'
-import { Plus, Users, CheckCircle, XCircle, Edit, Trash2, Armchair } from 'lucide-react'
+import { Plus, Users, CheckCircle, XCircle, Edit, Trash2, Armchair, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const Seats = () => {
@@ -11,6 +11,8 @@ const Seats = () => {
   const [showModal, setShowModal] = useState(false)
   const [modalType, setModalType] = useState('create') // 'create' or 'allocate'
   const [currentSeat, setCurrentSeat] = useState(null)
+  const [shiftFilter, setShiftFilter] = useState('all')
+  const [memberIdSearch, setMemberIdSearch] = useState('')
   const [formData, setFormData] = useState({ 
     seat_number: '', 
     floor: '', 
@@ -135,38 +137,79 @@ const Seats = () => {
     setFormData({ seat_number: '', floor: '', section: '', member_id: '' })
   }
 
+  const handleQuickAllocate = async () => {
+    if (!memberIdSearch.trim()) {
+      toast.error('Please enter member ID or code')
+      return
+    }
+
+    try {
+      // Find member by member_code or id
+      const member = members.find(m => 
+        m.member_code === memberIdSearch || 
+        m.id.toString() === memberIdSearch
+      )
+      
+      if (!member) {
+        toast.error('Member not found')
+        return
+      }
+
+      // Find an available seat
+      const availableSeat = seats.find(s => !s.member_id || s.member_id === '')
+      
+      if (!availableSeat) {
+        toast.error('No seats available')
+        return
+      }
+
+      // Allocate the seat
+      await seatsAPI.allocate(availableSeat.id, { member_id: member.id })
+      toast.success(`Seat ${availableSeat.seat_number} allocated to ${member.full_name || member.name}`)
+      setMemberIdSearch('')
+      fetchData()
+    } catch (error) {
+      toast.error('Failed to allocate seat')
+    }
+  }
+
+  // Filter seats by shift (placeholder - actual filtering would depend on seat metadata)
+  const filteredSeats = shiftFilter === 'all' 
+    ? seats 
+    : seats // In real implementation, filter based on seat shift property
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Seats Management</h1>
-          <p className="text-gray-600 mt-1">Manage library seats and allocations</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Seats Management</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage library seats</p>
         </div>
         <button 
           onClick={openCreateModal}
-          className="btn btn-primary flex items-center justify-center gap-2"
+          className="btn btn-primary flex items-center justify-center gap-2 text-sm sm:text-base"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
           Create Seats
         </button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Seats</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total}</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-600">Total Seats</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-2">{stats.total}</p>
             </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Armchair className="w-6 h-6 text-blue-600" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Armchair className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Available</p>
@@ -178,7 +221,7 @@ const Seats = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Occupied</p>
@@ -190,7 +233,7 @@ const Seats = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Occupancy</p>
@@ -204,7 +247,64 @@ const Seats = () => {
       </div>
 
       {/* Seats Grid */}
-      <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
+      <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-3 sm:p-6">
+        {/* Shift Filters & Quick Allocate */}
+        <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
+          {/* Shift Filter Tabs */}
+          <div className="flex flex-wrap gap-1 sm:gap-2 border-b pb-3">
+            {['all', 'morning', 'afternoon', 'evening', 'night', 'fullday'].map(shift => (
+              <button
+                key={shift}
+                onClick={() => setShiftFilter(shift)}
+                className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium text-xs sm:text-sm transition-colors ${
+                  shiftFilter === shift
+                    ? 'bg-red-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {shift === 'all' ? 'All' : shift.charAt(0).toUpperCase() + shift.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {/* Quick Allocate by Member ID */}
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Member ID..."
+                value={memberIdSearch}
+                onChange={(e) => setMemberIdSearch(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleQuickAllocate()}
+                className="input pl-8 sm:pl-10 w-full text-sm sm:text-base"
+              />
+            </div>
+            <button
+              onClick={handleQuickAllocate}
+              className="btn btn-primary whitespace-nowrap text-sm sm:text-base px-3 sm:px-4"
+            >
+              Get Seat
+            </button>
+          </div>
+        </div>
+
+        {/* Seat Stats Summary */}
+        <div className="flex justify-center gap-6 mb-6 pb-4 border-b">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-gray-900">{stats.total || seats.length}</div>
+            <div className="text-xs text-gray-600">All Seats</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-red-600">{stats.occupied}</div>
+            <div className="text-xs text-gray-600">Allotted</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600">{stats.available}</div>
+            <div className="text-xs text-gray-600">Unallotted</div>
+          </div>
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
@@ -226,8 +326,8 @@ const Seats = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-            {seats.map((seat) => {
+          <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2 sm:gap-3">
+            {filteredSeats.map((seat) => {
               const isOccupied = seat.member_id != null && seat.member_id !== ''
               return (
                 <div 
@@ -239,6 +339,19 @@ const Seats = () => {
                   }`}
                   onClick={() => !isOccupied && openAllocateModal(seat)}
                 >
+                  {/* Seat Icon */}
+                  <div className="mb-2">
+                    {isOccupied ? (
+                      <div className="w-12 h-12 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+                        <Users className="w-6 h-6 text-white" />
+                      </div>
+                    ) : (
+                      <div className="w-12 h-12 mx-auto bg-amber-600 rounded flex items-center justify-center">
+                        <Armchair className="w-6 h-6 text-amber-100" />
+                      </div>
+                    )}
+                  </div>
+
                   <div className="text-lg font-bold text-gray-900">{seat.seat_number}</div>
                   {seat.floor && (
                     <div className="text-xs text-gray-500">Floor: {seat.floor}</div>
@@ -250,7 +363,9 @@ const Seats = () => {
                       <span className="text-green-600">Available</span>
                     )}
                   </div>
-                  {isOccupied && (
+                  
+                  {/* Action Buttons */}
+                  {isOccupied ? (
                     <div className="flex items-center gap-1 justify-center mt-2">
                       <button 
                         onClick={(e) => {
@@ -262,20 +377,20 @@ const Seats = () => {
                       >
                         <XCircle className="w-4 h-4" />
                       </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 justify-center mt-2">
                       <button 
                         onClick={(e) => {
                           e.stopPropagation()
                           handleDelete(seat.id)
                         }}
                         className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
-                        title="Delete"
+                        title="Delete Seat"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                  )}
-                  {!isOccupied && (
-                    <div className="mt-2 text-xs text-gray-500">Click to allocate</div>
                   )}
                 </div>
               )
@@ -286,7 +401,7 @@ const Seats = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed top-0 left-0 right-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
           <div className="bg-white rounded-2xl max-w-md w-full p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">
               {modalType === 'create' ? 'Create New Seats' : `Allocate Seat ${currentSeat?.seat_number}`}

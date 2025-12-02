@@ -55,6 +55,15 @@ export const membersAPI = {
     return response.data
   },
   
+  renewMembership: async (memberId, planId) => {
+    const response = await apiClient.post('/members.php', {
+      action: 'renew',
+      member_id: memberId,
+      plan_id: planId
+    })
+    return response.data
+  },
+  
   delete: async (id) => {
     const response = await apiClient.delete(`/members.php?id=${id}`)
     return response.data
@@ -283,8 +292,8 @@ export const seatsAPI = {
   },
   
   delete: async (seatId) => {
-    // Backend expects: id in requestData
-    const response = await apiClient.post('/seats.php?action=delete', { id: seatId })
+    // Use proper DELETE method with id in query parameter
+    const response = await apiClient.delete(`/seats.php?id=${seatId}`)
     return response.data
   }
 }
@@ -430,6 +439,34 @@ export const subscriptionPlansAPI = {
 
   delete: async (id) => {
     const response = await apiClient.delete('/subscription_plans.php', { data: { id } })
+    return response.data
+  }
+}
+
+// Waiting List APIs
+export const waitingListAPI = {
+  getAll: async () => {
+    const response = await apiClient.get('/waiting_list.php')
+    return response.data
+  },
+
+  getById: async (id) => {
+    const response = await apiClient.get(`/waiting_list.php?id=${id}`)
+    return response.data
+  },
+
+  create: async (data) => {
+    const response = await apiClient.post('/waiting_list.php', data)
+    return response.data
+  },
+
+  update: async (id, data) => {
+    const response = await apiClient.put(`/waiting_list.php?id=${id}`, data)
+    return response.data
+  },
+
+  delete: async (id) => {
+    const response = await apiClient.delete(`/waiting_list.php?id=${id}`)
     return response.data
   }
 }

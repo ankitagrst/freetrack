@@ -93,7 +93,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('authToken')
     localStorage.removeItem('user')
     setUser(null)
-    toast.success('Logged out successfully')
     navigate('/login', { replace: true })
   }
 

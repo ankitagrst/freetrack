@@ -19,6 +19,7 @@ import Enquiries from './pages/Enquiries'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import Plans from './pages/Plans'
+import WaitingList from './pages/WaitingList'
 
 // Layout
 import AppLayout from './components/layout/AppLayout'
@@ -63,6 +64,7 @@ function App() {
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/plans" element={<Plans />} />
+            <Route path="/waiting-list" element={<WaitingList />} />
           </Route>
           
           {/* Redirects */}
