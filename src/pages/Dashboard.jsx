@@ -89,18 +89,28 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Welcome Banner */}
+      <div className="bg-gradient-to-r from-primary to-blue-600 rounded-xl shadow-lg p-6 sm:p-8 text-white">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Welcome to FeeTrack! 👋</h1>
+            <p className="text-blue-100 text-sm sm:text-base">Manage your library efficiently with our comprehensive dashboard</p>
+          </div>
+          <button
+            onClick={fetchDashboardData}
+            className="btn bg-white text-primary hover:bg-gray-100 w-full sm:w-auto text-sm font-semibold"
+          >
+            Refresh Data
+          </button>
+        </div>
+      </div>
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Welcome back! Here's your library overview</p>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Here's your library overview</p>
         </div>
-        <button
-          onClick={fetchDashboardData}
-          className="btn btn-primary w-full sm:w-auto text-sm"
-        >
-          Refresh Data
-        </button>
       </div>
 
       {/* Member Stats */}
