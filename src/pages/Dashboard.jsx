@@ -286,7 +286,7 @@ const Dashboard = () => {
       </div>
 
       {/* Attendance Stats */}
-      {attendanceStats && (
+      {/* {attendanceStats && (
         <div>
           <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Attendance Overview</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -347,7 +347,7 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Quick Actions */}
       <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { membersAPI, plansAPI, seatsAPI, paymentsAPI } from '../services/api'
-import { Plus, Search, Edit, Trash2, Users, UserCheck, UserX, Clock, X, CreditCard, User, IdCard, RefreshCw, Ban, CheckCircle, Phone, MapPin, Calendar, IndianRupee, Printer } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Users, UserCheck, UserX, Clock, X, CreditCard, User, IdCard, RefreshCw, Ban, CheckCircle, Phone, MapPin, Calendar, IndianRupee, Printer, Camera } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format, differenceInDays } from 'date-fns'
 import InvoiceGenerator from '../components/InvoiceGenerator'
@@ -33,6 +33,7 @@ const Members = () => {
     photo: ''
   })
   const [photoPreview, setPhotoPreview] = useState(null)
+  const fileInputRef = useState(null)
   const [plans, setPlans] = useState([])
   const [seats, setSeats] = useState([])
   const [showRenewModal, setShowRenewModal] = useState(false)
@@ -705,23 +706,10 @@ const Members = () => {
             </h2>
             
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name *</label>
-                <input
-                  type="text"
-                  value={formData.full_name}
-                  onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-                  className="input"
-                  required
-                />
-              </div>
-
-              {/* Photo Upload */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Profile Photo</label>
-                <div className="flex items-center gap-4">
-                  {/* Photo Preview */}
-                  <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center border-2 border-gray-200">
+              {/* Photo Upload - At Top */}
+              <div className="flex justify-center mb-6">
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center border-4 border-gray-200">
                     {photoPreview || formData.photo ? (
                       <img 
                         src={photoPreview || formData.photo} 
@@ -729,33 +717,43 @@ const Members = () => {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <User className="w-8 h-8 text-gray-400" />
+                      <User className="w-12 h-12 text-gray-400" />
                     )}
                   </div>
-                  
-                  {/* Upload Button */}
-                  <div className="flex-1">
-                    <input
-                      type="url"
-                      placeholder="Enter photo URL (e.g., https://example.com/photo.jpg)"
-                      value={formData.photo}
-                      onChange={(e) => {
-                        setFormData({...formData, photo: e.target.value})
-                        setPhotoPreview(e.target.value)
-                      }}
-                      className="input"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Paste image URL or leave empty for default avatar</p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('photoInput').click()}
+                    className="absolute bottom-0 right-0 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary-dark transition-colors"
+                  >
+                    <Camera className="w-5 h-5" />
+                  </button>
+                  <input
+                    id="photoInput"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => {
+                      const file = e.target.files[0]
+                      if (file) {
+                        const reader = new FileReader()
+                        reader.onloadend = () => {
+                          setPhotoPreview(reader.result)
+                          setFormData({...formData, photo: reader.result})
+                        }
+                        reader.readAsDataURL(file)
+                      }
+                    }}
+                    className="hidden"
+                  />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Email *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name *</label>
                 <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  type="text"
+                  value={formData.full_name}
+                  onChange={(e) => setFormData({...formData, full_name: e.target.value})}
                   className="input"
                   required
                 />
@@ -771,19 +769,6 @@ const Members = () => {
                   required
                 />
               </div>
-
-              {!currentMember && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Password *</label>
-                  <input
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({...formData, password: e.target.value})}
-                    className="input"
-                    required={!currentMember}
-                  />
-                </div>
-              )}
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Plan *</label>
