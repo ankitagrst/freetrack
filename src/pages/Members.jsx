@@ -619,56 +619,56 @@ const Members = () => {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mt-4">
+                {/* Action Buttons - Horizontal Scroll */}
+                <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide">
                   <button
                     onClick={() => openProfileModal(member)}
-                    className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm"
                   >
                     <User className="w-4 h-4" />
                     Profile
                   </button>
                   <button
                     onClick={() => generateIdCard(member)}
-                    className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all shadow-sm"
                   >
                     <IdCard className="w-4 h-4" />
                     ID-Card
                   </button>
                   <button
                     onClick={() => openInvoice(member)}
-                    className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-teal-700 bg-teal-50 rounded-lg hover:bg-teal-100 transition-colors"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg hover:from-teal-600 hover:to-teal-700 transition-all shadow-sm"
                   >
                     <Printer className="w-4 h-4" />
                     Invoice
                   </button>
                   <button
                     onClick={() => openModal(member)}
-                    className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 rounded-lg hover:from-green-600 hover:to-green-700 transition-all shadow-sm"
                   >
                     <Edit className="w-4 h-4" />
                     Edit
                   </button>
                   <button
                     onClick={() => openPaymentModal(member)}
-                    className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition-all shadow-sm"
                   >
                     <CreditCard className="w-4 h-4" />
                     Add Pay
                   </button>
                   <button
                     onClick={() => openRenewModal(member)}
-                    className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-orange-700 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all shadow-sm"
                   >
                     <RefreshCw className="w-4 h-4" />
                     Renew
                   </button>
                   <button
                     onClick={() => handleBlockUnblock(member)}
-                    className={`flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white rounded-lg transition-all shadow-sm ${
                       member.status === 'suspended'
-                        ? 'text-green-700 bg-green-50 hover:bg-green-100'
-                        : 'text-red-700 bg-red-50 hover:bg-red-100'
+                        ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
+                        : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
                     }`}
                   >
                     {member.status === 'suspended' ? (
@@ -685,7 +685,7 @@ const Members = () => {
                   </button>
                   <button
                     onClick={() => handleDelete(member.id)}
-                    className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors col-span-2 sm:col-span-1 sm:ml-auto justify-center"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 rounded-lg hover:from-red-600 hover:to-red-700 transition-all shadow-sm"
                   >
                     <Trash2 className="w-4 h-4" />
                     Delete
@@ -782,22 +782,6 @@ const Members = () => {
                   {plans.map(plan => (
                     <option key={plan.id} value={plan.id}>
                       {plan.plan_name} - ₹{plan.price}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Seat (Optional)</label>
-                <select
-                  value={formData.seat_id}
-                  onChange={(e) => setFormData({...formData, seat_id: e.target.value})}
-                  className="input"
-                >
-                  <option value="">No Seat Assigned</option>
-                  {seats.map(seat => (
-                    <option key={seat.id} value={seat.id}>
-                      {seat.seat_number} - {seat.location}
                     </option>
                   ))}
                 </select>
@@ -903,6 +887,49 @@ const Members = () => {
                   onChange={(e) => setFormData({...formData, id_proof_number: e.target.value})}
                   className="input"
                 />
+              </div>
+
+              {/* Allot Seat - Visual Selection */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Allot Seat (Optional)</label>
+                <div className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200">
+                  <p className="text-xs text-gray-600 mb-3">Select an available seat by clicking on it</p>
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-48 overflow-y-auto">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({...formData, seat_id: ''})}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        !formData.seat_id 
+                          ? 'bg-blue-500 border-blue-600 text-white' 
+                          : 'bg-white border-gray-300 text-gray-700 hover:border-blue-300'
+                      }`}
+                    >
+                      <p className="text-xs font-bold">No Seat</p>
+                    </button>
+                    {seats.filter(seat => !seat.member_id || seat.id === formData.seat_id).map(seat => (
+                      <button
+                        type="button"
+                        key={seat.id}
+                        onClick={() => setFormData({...formData, seat_id: seat.id})}
+                        className={`p-3 rounded-lg border-2 transition-all transform hover:scale-105 ${
+                          formData.seat_id === seat.id
+                            ? 'bg-green-500 border-green-600 text-white shadow-lg'
+                            : 'bg-green-50 border-green-300 text-gray-700 hover:bg-green-100 hover:border-green-400'
+                        }`}
+                      >
+                        <p className="text-sm font-bold">{seat.seat_number}</p>
+                        {seat.floor && <p className="text-xs opacity-75">F{seat.floor}</p>}
+                      </button>
+                    ))}
+                  </div>
+                  {formData.seat_id && (
+                    <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded text-center">
+                      <p className="text-sm font-semibold text-green-800">
+                        ✓ Seat {seats.find(s => s.id === formData.seat_id)?.seat_number} Selected
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-3 pt-4">

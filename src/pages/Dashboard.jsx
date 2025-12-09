@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Users, CreditCard, TrendingUp, UserCheck, UserX, Clock, IndianRupee, AlertCircle, Calendar, DollarSign } from 'lucide-react'
+import { Users, CreditCard, TrendingUp, UserCheck, UserX, Clock, IndianRupee, AlertCircle, Calendar, DollarSign, Plus, IdCard, X } from 'lucide-react'
 import { membersAPI, paymentsAPI, attendanceAPI } from '../services/api'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
@@ -12,6 +12,12 @@ const Dashboard = () => {
   const [recentActivity, setRecentActivity] = useState([])
   const [monthlyCollections, setMonthlyCollections] = useState([])
   const [todayCollection, setTodayCollection] = useState(0)
+  const [showMonthModal, setShowMonthModal] = useState(false)
+  const [selectedMonth, setSelectedMonth] = useState(null)
+  const [monthPayments, setMonthPayments] = useState([])
+  const [showMemberModal, setShowMemberModal] = useState(false)
+  const [selectedMemberType, setSelectedMemberType] = useState(null)
+  const [filteredMembers, setFilteredMembers] = useState([])
 
   useEffect(() => {
     fetchDashboardData()
@@ -30,6 +36,7 @@ const Dashboard = () => {
       ])
 
       if (membersStatsRes.success && membersStatsRes.data) {
+        console.log('Member Stats Response:', membersStatsRes.data)
         setMemberStats(membersStatsRes.data)
       }
 
@@ -45,7 +52,9 @@ const Dashboard = () => {
 
       // Process monthly collections
       if (monthlyStats.success && monthlyStats.data) {
+        console.log('Monthly Stats Response:', monthlyStats)
         const months = Array.isArray(monthlyStats.data) ? monthlyStats.data : monthlyStats.data.monthly || []
+        console.log('Monthly Collections:', months)
         setMonthlyCollections(months.slice(0, 3)) // Last 3 months
       }
 
@@ -63,6 +72,122 @@ const Dashboard = () => {
       toast.error('Failed to load dashboard data')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleMemberStatClick = async (type) => {
+    setSelectedMemberType(type)
+    setShowMemberModal(true)
+    
+    try {
+      const response = await membersAPI.getAll()
+      console.log('Members API Response:', response)
+      
+      let members = []
+      
+      if (response.success && response.data) {
+        if (Array.isArray(response.data)) {
+          members = response.data
+        } else if (response.data.members && Array.isArray(response.data.members)) {
+          members = response.data.members
+        }
+      }
+      
+      console.log('All Members:', members)
+      
+      // Filter based on type
+      let filtered = []
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      switch(type) {
+        case 'total':
+          filtered = members
+          break
+        case 'active':
+          // Active: status is active AND plan hasn't expired
+          filtered = members.filter(m => {
+            const planEndDate = new Date(m.plan_end_date)
+            return m.status === 'active' && planEndDate >= today
+          })
+          break
+        case 'expired':
+          // Expired: plan_end_date is in the past
+          filtered = members.filter(m => {
+            if (!m.plan_end_date) return false
+            const planEndDate = new Date(m.plan_end_date)
+            return planEndDate < today
+          })
+          break
+        case 'expiring':
+          // Expiring Soon: plan ends within next 7 days
+          filtered = members.filter(m => {
+            if (!m.plan_end_date) return false
+            const planEndDate = new Date(m.plan_end_date)
+            const diffTime = planEndDate - today
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+            return diffDays >= 0 && diffDays <= 7
+          })
+          break
+        default:
+          filtered = members
+      }
+      
+      console.log(`Filtered ${type} Members:`, filtered)
+      setFilteredMembers(filtered)
+    } catch (error) {
+      console.error('Error fetching members:', error)
+      toast.error('Failed to load members')
+    }
+  }
+
+  const handleMonthClick = async (month) => {
+    setSelectedMonth(month)
+    setShowMonthModal(true)
+    
+    try {
+      // Fetch payments for this specific month
+      const response = await paymentsAPI.getAll()
+      console.log('Full API Response:', response)
+      
+      let allPayments = []
+      
+      // Extract payments array from response - check all possible structures
+      if (response.success && response.data) {
+        if (Array.isArray(response.data)) {
+          allPayments = response.data
+          console.log('Using response.data (array):', allPayments)
+        } else if (response.data.payments && Array.isArray(response.data.payments)) {
+          allPayments = response.data.payments
+          console.log('Using response.data.payments:', allPayments)
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          allPayments = response.data.data
+          console.log('Using response.data.data:', allPayments)
+        }
+      } else if (response.payments && Array.isArray(response.payments)) {
+        allPayments = response.payments
+        console.log('Using response.payments:', allPayments)
+      }
+      
+      console.log('All Payments:', allPayments)
+      console.log('Selected Month:', month)
+      
+      // Filter payments for the selected month/year
+      const filtered = allPayments.filter(payment => {
+        const paymentDate = new Date(payment.payment_date)
+        const paymentMonth = paymentDate.getMonth() + 1
+        const paymentYear = paymentDate.getFullYear()
+        
+        console.log(`Payment ${payment.id}: ${paymentDate} -> Month ${paymentMonth}, Year ${paymentYear}`)
+        
+        return paymentMonth === month.month_number && paymentYear === month.year
+      })
+      
+      console.log('Filtered Payments:', filtered)
+      setMonthPayments(filtered)
+    } catch (error) {
+      console.error('Error fetching month payments:', error)
+      toast.error('Failed to load payment details')
     }
   }
 
@@ -96,12 +221,13 @@ const Dashboard = () => {
             <h1 className="text-2xl sm:text-3xl font-bold mb-2">Welcome to FeeTrack! 👋</h1>
             <p className="text-blue-100 text-sm sm:text-base">Manage your library efficiently with our comprehensive dashboard</p>
           </div>
-          <button
-            onClick={fetchDashboardData}
-            className="btn bg-white text-primary hover:bg-gray-100 w-full sm:w-auto text-sm font-semibold"
+          <a
+            href="/members"
+            className="btn bg-white text-primary hover:bg-gray-100 w-full sm:w-auto text-sm font-semibold inline-flex items-center gap-2"
           >
-            Refresh Data
-          </button>
+            <Plus className="w-5 h-5" />
+            Add New Member
+          </a>
         </div>
       </div>
 
@@ -118,61 +244,73 @@ const Dashboard = () => {
         <div>
           <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Member Statistics</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 sm:p-6">
+            <button
+              onClick={() => handleMemberStatClick('total')}
+              className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-6 sm:p-8 hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer text-left"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">Total Members</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-blue-600 mt-2 break-words">
+                  <p className="text-sm font-medium text-gray-600">Total Members</p>
+                  <p className="text-3xl sm:text-4xl font-bold text-blue-600 mt-3 break-words">
                     {memberStats.total_members || 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Users className="w-6 h-6 text-blue-600" />
+                <div className="w-14 h-14 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Users className="w-7 h-7 text-blue-600" />
                 </div>
               </div>
-            </div>
+            </button>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-4 sm:p-6">
+            <button
+              onClick={() => handleMemberStatClick('active')}
+              className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-6 sm:p-8 hover:shadow-lg hover:border-green-300 transition-all cursor-pointer text-left"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">Active Members</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-green-600 mt-2 break-words">
+                  <p className="text-sm font-medium text-gray-600">Active Members</p>
+                  <p className="text-3xl sm:text-4xl font-bold text-green-600 mt-3 break-words">
                     {memberStats.active_members || 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <UserCheck className="w-6 h-6 text-green-600" />
+                <div className="w-14 h-14 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <UserCheck className="w-7 h-7 text-green-600" />
                 </div>
               </div>
-            </div>
+            </button>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-4 sm:p-6">
+            <button
+              onClick={() => handleMemberStatClick('expired')}
+              className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-6 sm:p-8 hover:shadow-lg hover:border-red-300 transition-all cursor-pointer text-left"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">Expired Plans</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-red-600 mt-2 break-words">
+                  <p className="text-sm font-medium text-gray-600">Expired Members</p>
+                  <p className="text-3xl sm:text-4xl font-bold text-red-600 mt-3 break-words">
                     {memberStats.expired_members || 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <UserX className="w-6 h-6 text-red-600" />
+                <div className="w-14 h-14 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <UserX className="w-7 h-7 text-red-600" />
                 </div>
               </div>
-            </div>
+            </button>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-yellow-200 p-4 sm:p-6">
+            <button
+              onClick={() => handleMemberStatClick('expiring')}
+              className="bg-white rounded-xl shadow-sm border-2 border-yellow-200 p-6 sm:p-8 hover:shadow-lg hover:border-yellow-300 transition-all cursor-pointer text-left"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">Expiring Soon</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-yellow-600 mt-2 break-words">
+                  <p className="text-sm font-medium text-gray-600">Expiring Soon</p>
+                  <p className="text-3xl sm:text-4xl font-bold text-yellow-600 mt-3 break-words">
                     {memberStats.expiring_soon || 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Clock className="w-6 h-6 text-yellow-600" />
+                <div className="w-14 h-14 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Clock className="w-7 h-7 text-yellow-600" />
                 </div>
               </div>
-            </div>
+            </button>
           </div>
         </div>
       )}
@@ -264,16 +402,20 @@ const Dashboard = () => {
           {/* Monthly Collections */}
           <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Collections</h3>
-            <div className="space-y-3">
+              <div className="space-y-3">
               {monthlyCollections.length > 0 ? (
                 monthlyCollections.map((month, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                    <div>
+                  <button
+                    key={idx}
+                    onClick={() => handleMonthClick(month)}
+                    className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-lg border border-blue-200 hover:border-blue-300 transition-all cursor-pointer"
+                  >
+                    <div className="text-left">
                       <p className="text-sm font-semibold text-gray-900">
-                        Collection {month.month_name || `Month ${idx + 1}`}
+                        {month.month_name || `Month ${idx + 1}`}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
-                        {month.year || new Date().getFullYear()}
+                        Year {month.year || new Date().getFullYear()}
                       </p>
                     </div>
                     <div className="text-right">
@@ -282,7 +424,7 @@ const Dashboard = () => {
                       </p>
                       <p className="text-xs text-gray-500">{month.count || 0} payments</p>
                     </div>
-                  </div>
+                  </button>
                 ))
               ) : (
                 <div className="text-center py-6 text-gray-500">
@@ -359,37 +501,45 @@ const Dashboard = () => {
         </div>
       )} */}
 
-      {/* Quick Actions */}
+      {/* Quick Actions - Horizontal Scroll */}
       <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
           <a
             href="/members"
-            className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-blue-50 border-2 border-transparent hover:border-blue-200 rounded-lg transition-all"
+            className="flex-shrink-0 flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 border-2 border-blue-200 rounded-lg transition-all min-w-[200px]"
           >
-            <Users className="w-8 h-8 text-primary mb-2" />
-            <span className="text-sm font-medium text-gray-700 text-center">Add Member</span>
+            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+              <Users className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-sm font-semibold text-gray-800">Profile</span>
+          </a>
+          <a
+            href="/members"
+            className="flex-shrink-0 flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 border-2 border-purple-200 rounded-lg transition-all min-w-[200px]"
+          >
+            <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+              <IdCard className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-sm font-semibold text-gray-800">ID Card</span>
           </a>
           <a
             href="/payments"
-            className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-blue-50 border-2 border-transparent hover:border-blue-200 rounded-lg transition-all"
+            className="flex-shrink-0 flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 border-2 border-green-200 rounded-lg transition-all min-w-[200px]"
           >
-            <CreditCard className="w-8 h-8 text-primary mb-2" />
-            <span className="text-sm font-medium text-gray-700 text-center">Record Payment</span>
-          </a>
-          <a
-            href="/attendance"
-            className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-blue-50 border-2 border-transparent hover:border-blue-200 rounded-lg transition-all"
-          >
-            <UserCheck className="w-8 h-8 text-primary mb-2" />
-            <span className="text-sm font-medium text-gray-700 text-center">Mark Attendance</span>
+            <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
+              <CreditCard className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-sm font-semibold text-gray-800">Invoice</span>
           </a>
           <a
             href="/reports"
-            className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-blue-50 border-2 border-transparent hover:border-blue-200 rounded-lg transition-all"
+            className="flex-shrink-0 flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 border-2 border-orange-200 rounded-lg transition-all min-w-[200px]"
           >
-            <TrendingUp className="w-8 h-8 text-primary mb-2" />
-            <span className="text-sm font-medium text-gray-700 text-center">View Reports</span>
+            <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-sm font-semibold text-gray-800">Reports</span>
           </a>
         </div>
       </div>
@@ -427,6 +577,181 @@ const Dashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Monthly Payment Details Modal */}
+      {showMonthModal && selectedMonth && (
+        <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">{selectedMonth.month_name}</h2>
+                <p className="text-sm text-gray-600 mt-1">Payment Details - Year {selectedMonth.year}</p>
+              </div>
+              <button
+                onClick={() => setShowMonthModal(false)}
+                className="text-gray-400 hover:text-gray-600 p-2 hover:bg-white rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Modal Body - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {monthPayments.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <CreditCard className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-lg font-medium">No payments found</p>
+                  <p className="text-sm mt-2">No payment records for this month</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {monthPayments.map((payment, idx) => (
+                    <div key={payment.id} className="p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                              {idx + 1}
+                            </span>
+                            <div>
+                              <p className="font-semibold text-gray-900">{payment.member_name}</p>
+                              <p className="text-xs text-gray-500">ID: {payment.member_id}</p>
+                            </div>
+                          </div>
+                          <div className="ml-10 grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <p className="text-gray-500">Date</p>
+                              <p className="font-medium text-gray-900">
+                                {payment.payment_date ? format(new Date(payment.payment_date), 'MMM dd, yyyy') : 'N/A'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Method</p>
+                              <p className="font-medium text-gray-900 capitalize">{payment.payment_method}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Type</p>
+                              <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${getPaymentTypeColor(payment.payment_type)}`}>
+                                {payment.payment_type}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Status</p>
+                              <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${payment.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                {payment.status}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className="text-2xl font-bold text-blue-600">₹{parseFloat(payment.amount).toLocaleString('en-IN')}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer - Totals */}
+            <div className="p-6 border-t border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Total Payments</p>
+                  <p className="text-lg font-bold text-gray-900">{monthPayments.length} transactions</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">Total Amount</p>
+                  <p className="text-3xl font-bold text-blue-600">
+                    ₹{monthPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0).toLocaleString('en-IN')}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-gray-300">
+                <p className="text-center text-sm text-gray-500">
+                  {selectedMonth.month_name} - Year {selectedMonth.year}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Member Stats Modal */}
+      {showMemberModal && selectedMemberType && (
+        <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {selectedMemberType === 'total' && 'All Members'}
+                  {selectedMemberType === 'active' && 'Active Members'}
+                  {selectedMemberType === 'expired' && 'Expired Members'}
+                  {selectedMemberType === 'expiring' && 'Members Expiring Soon'}
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">{filteredMembers.length} members found</p>
+              </div>
+              <button
+                onClick={() => setShowMemberModal(false)}
+                className="text-gray-400 hover:text-gray-600 p-2 hover:bg-white rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Modal Body - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {filteredMembers.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-lg font-medium">No members found</p>
+                  <p className="text-sm mt-2">No members match this criteria</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredMembers.map((member) => (
+                    <div key={member.id} className="p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0">
+                          {member.name?.charAt(0).toUpperCase() || 'M'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 truncate">{member.name}</p>
+                          <p className="text-xs text-gray-500">ID: {member.id}</p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${
+                              member.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {member.status}
+                            </span>
+                            {member.plan_status && (
+                              <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${
+                                member.plan_status === 'active' ? 'bg-blue-100 text-blue-800' : 
+                                member.plan_status === 'expiring_soon' ? 'bg-yellow-100 text-yellow-800' : 
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {member.plan_status}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-2 text-xs text-gray-600">
+                            <p>Phone: {member.phone}</p>
+                            {member.plan_end_date && (
+                              <p>Plan Ends: {format(new Date(member.plan_end_date), 'MMM dd, yyyy')}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

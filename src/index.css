@@ -199,6 +199,16 @@
   @apply w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center flex-shrink-0;
 }
 
+/* Hide scrollbar for horizontal scroll */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Stats Grid - Universal layout */
 .stats-grid {
   @apply grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4;
