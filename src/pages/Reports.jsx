@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { reportsAPI, paymentsAPI, expensesAPI } from '../services/api'
-import { FileText, Download, Calendar, TrendingUp, BarChart3, DollarSign, TrendingDown } from 'lucide-react'
+import { FileText, Download, Calendar, TrendingUp, BarChart3, DollarSign, TrendingDown, X, CreditCard } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
@@ -15,6 +15,9 @@ const Reports = () => {
   const [showPLReport, setShowPLReport] = useState(false)
   const [plData, setPLData] = useState({ collections: [], expenses: [], activeTab: 'collection' })
   const [plFilters, setPLFilters] = useState({ from_date: '', to_date: '' })
+  const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null)
+  const [paymentMethodData, setPaymentMethodData] = useState({ cash: [], online: [] })
 
   const reportTypes = [
     { value: 'payments', label: 'Payment Report' },
@@ -46,16 +49,28 @@ const Reports = () => {
         count: 0
       }))
       
+      // Separate cash and online payments for the year
+      const cashPayments = []
+      const onlinePayments = []
+      
       allPayments.forEach(payment => {
         const date = new Date(payment.payment_date)
         if (date.getFullYear() === selectedYear) {
           const monthIdx = date.getMonth()
           monthlyData[monthIdx].amount += parseFloat(payment.amount || 0)
           monthlyData[monthIdx].count += 1
+          
+          // Categorize by payment method
+          if (payment.payment_method === 'cash') {
+            cashPayments.push(payment)
+          } else {
+            onlinePayments.push(payment)
+          }
         }
       })
       
       setYearlyData(monthlyData)
+      setPaymentMethodData({ cash: cashPayments, online: onlinePayments })
     } catch (error) {
       console.error('Error fetching yearly data:', error)
       toast.error('Failed to load collection data')
@@ -329,15 +344,30 @@ const Reports = () => {
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 sm:p-4 border border-blue-200">
               <p className="text-xs sm:text-sm font-medium text-gray-600">Total Revenue</p>
               <p className="text-xl sm:text-2xl font-bold text-blue-600 mt-1">₹{totalYearlyRevenue.toLocaleString('en-IN')}</p>
+              <p className="text-xs text-gray-500 mt-1">{totalYearlyPayments} payments</p>
             </div>
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 sm:p-4 border border-green-200">
-              <p className="text-xs sm:text-sm font-medium text-gray-600">Total Payments</p>
-              <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">{totalYearlyPayments}</p>
-            </div>
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 sm:p-4 border border-purple-200">
-              <p className="text-xs sm:text-sm font-medium text-gray-600">Average/Month</p>
-              <p className="text-xl sm:text-2xl font-bold text-purple-600 mt-1">₹{Math.round(totalYearlyRevenue / 12).toLocaleString('en-IN')}</p>
-            </div>
+            <button
+              onClick={() => {
+                setSelectedPaymentMethod('cash')
+                setShowPaymentMethodModal(true)
+              }}
+              className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 sm:p-4 border border-green-200 hover:shadow-lg transition-all cursor-pointer text-left"
+            >
+              <p className="text-xs sm:text-sm font-medium text-gray-600">Cash Payments</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">₹{paymentMethodData.cash.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0).toLocaleString('en-IN')}</p>
+              <p className="text-xs text-gray-500 mt-1">{paymentMethodData.cash.length} transactions</p>
+            </button>
+            <button
+              onClick={() => {
+                setSelectedPaymentMethod('online')
+                setShowPaymentMethodModal(true)
+              }}
+              className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 sm:p-4 border border-purple-200 hover:shadow-lg transition-all cursor-pointer text-left"
+            >
+              <p className="text-xs sm:text-sm font-medium text-gray-600">Online Payments</p>
+              <p className="text-xl sm:text-2xl font-bold text-purple-600 mt-1">₹{paymentMethodData.online.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0).toLocaleString('en-IN')}</p>
+              <p className="text-xs text-gray-500 mt-1">{paymentMethodData.online.length} transactions</p>
+            </button>
           </div>
 
           {/* Pie Chart */}
@@ -438,6 +468,122 @@ const Reports = () => {
                 <p className="text-[10px] sm:text-xs text-gray-500">{data.count} payments</p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Payment Method Modal */}
+      {showPaymentMethodModal && selectedPaymentMethod && (
+        <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
+          <div className="bg-white rounded-xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className={`p-6 border-b border-gray-200 flex items-center justify-between ${
+              selectedPaymentMethod === 'cash' ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 'bg-gradient-to-r from-purple-50 to-pink-50'
+            }`}>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {selectedPaymentMethod === 'cash' ? 'Cash Payments' : 'Online Payments'}
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {selectedPaymentMethod === 'cash' ? paymentMethodData.cash.length : paymentMethodData.online.length} transactions - 
+                  Year {selectedYear}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPaymentMethodModal(false)}
+                className="text-gray-400 hover:text-gray-600 p-2 hover:bg-white rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Modal Body - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {(selectedPaymentMethod === 'cash' ? paymentMethodData.cash : paymentMethodData.online).length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <CreditCard className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-lg font-medium">No payments found</p>
+                  <p className="text-sm mt-2">No {selectedPaymentMethod} payment records</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {(selectedPaymentMethod === 'cash' ? paymentMethodData.cash : paymentMethodData.online).map((payment, idx) => (
+                    <div key={payment.id || idx} className={`p-4 rounded-lg border hover:shadow-sm transition-all ${
+                      selectedPaymentMethod === 'cash' 
+                        ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200' 
+                        : 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200'
+                    }`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                              selectedPaymentMethod === 'cash' ? 'bg-green-500 text-white' : 'bg-purple-500 text-white'
+                            }`}>
+                              {idx + 1}
+                            </span>
+                            <div>
+                              <p className="font-semibold text-gray-900">{payment.member_name}</p>
+                              <p className="text-xs text-gray-500">ID: {payment.member_id}</p>
+                            </div>
+                          </div>
+                          <div className="ml-10 grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <p className="text-gray-500">Date</p>
+                              <p className="font-medium text-gray-900">
+                                {payment.payment_date ? format(new Date(payment.payment_date), 'MMM dd, yyyy') : 'N/A'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Type</p>
+                              <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${
+                                payment.payment_type === 'enrollment' ? 'bg-blue-100 text-blue-800' :
+                                payment.payment_type === 'subscription' ? 'bg-green-100 text-green-800' :
+                                payment.payment_type === 'renewal' ? 'bg-purple-100 text-purple-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {payment.payment_type}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className={`text-2xl font-bold ${
+                            selectedPaymentMethod === 'cash' ? 'text-green-600' : 'text-purple-600'
+                          }`}>
+                            ₹{parseFloat(payment.amount).toLocaleString('en-IN')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer - Totals */}
+            <div className={`p-6 border-t border-gray-200 ${
+              selectedPaymentMethod === 'cash' ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 'bg-gradient-to-r from-purple-50 to-pink-50'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Total Transactions</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {selectedPaymentMethod === 'cash' ? paymentMethodData.cash.length : paymentMethodData.online.length}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">Total Amount</p>
+                  <p className={`text-3xl font-bold ${
+                    selectedPaymentMethod === 'cash' ? 'text-green-600' : 'text-purple-600'
+                  }`}>
+                    ₹{(selectedPaymentMethod === 'cash' 
+                      ? paymentMethodData.cash.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0)
+                      : paymentMethodData.online.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0)
+                    ).toLocaleString('en-IN')}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

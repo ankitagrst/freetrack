@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { membersAPI, plansAPI, seatsAPI, paymentsAPI } from '../services/api'
-import { Plus, Search, Edit, Trash2, Users, UserCheck, UserX, Clock, X, CreditCard, User, IdCard, RefreshCw, Ban, CheckCircle, Phone, MapPin, Calendar, IndianRupee, Printer, Camera } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Users, UserCheck, UserX, Clock, X, CreditCard, User, IdCard, RefreshCw, Ban, CheckCircle, Phone, MapPin, Calendar, IndianRupee, Printer, Camera, MessageSquare } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format, differenceInDays } from 'date-fns'
 import InvoiceGenerator from '../components/InvoiceGenerator'
@@ -621,6 +621,22 @@ const Members = () => {
 
                 {/* Action Buttons - Horizontal Scroll */}
                 <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide">
+                  <a
+                    href={`https://wa.me/91${member.phone}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 rounded-lg hover:from-green-600 hover:to-green-700 transition-all shadow-sm"
+                  >
+                    <Phone className="w-4 h-4" />
+                    WhatsApp
+                  </a>
+                  <a
+                    href={`sms:${member.phone}`}
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-cyan-600 rounded-lg hover:from-cyan-600 hover:to-cyan-700 transition-all shadow-sm"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    Message
+                  </a>
                   <button
                     onClick={() => openProfileModal(member)}
                     className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm"
@@ -788,16 +804,6 @@ const Members = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Date of Birth</label>
-                <input
-                  type="date"
-                  value={formData.date_of_birth}
-                  onChange={(e) => setFormData({...formData, date_of_birth: e.target.value})}
-                  className="input"
-                />
-              </div>
-
-              <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Gender</label>
                 <select
                   value={formData.gender}
@@ -812,47 +818,6 @@ const Members = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Address</label>
-                <textarea
-                  value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
-                  className="input"
-                  rows="2"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">City</label>
-                  <input
-                    type="text"
-                    value={formData.city}
-                    onChange={(e) => setFormData({...formData, city: e.target.value})}
-                    className="input"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">State</label>
-                  <input
-                    type="text"
-                    value={formData.state}
-                    onChange={(e) => setFormData({...formData, state: e.target.value})}
-                    className="input"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Pincode</label>
-                <input
-                  type="text"
-                  value={formData.pincode}
-                  onChange={(e) => setFormData({...formData, pincode: e.target.value})}
-                  className="input"
-                />
-              </div>
-
-              <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Emergency Contact</label>
                 <input
                   type="tel"
@@ -860,32 +825,6 @@ const Members = () => {
                   onChange={(e) => setFormData({...formData, emergency_contact: e.target.value})}
                   className="input"
                   placeholder="Emergency contact number"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">ID Proof Type</label>
-                <select
-                  value={formData.id_proof_type}
-                  onChange={(e) => setFormData({...formData, id_proof_type: e.target.value})}
-                  className="input"
-                >
-                  <option value="">Select ID Proof</option>
-                  <option value="aadhar">Aadhar Card</option>
-                  <option value="pan">PAN Card</option>
-                  <option value="voter_id">Voter ID</option>
-                  <option value="driving_license">Driving License</option>
-                  <option value="passport">Passport</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">ID Proof Number</label>
-                <input
-                  type="text"
-                  value={formData.id_proof_number}
-                  onChange={(e) => setFormData({...formData, id_proof_number: e.target.value})}
-                  className="input"
                 />
               </div>
 
