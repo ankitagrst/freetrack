@@ -16,6 +16,7 @@
   /* Disable pull-to-refresh on mobile */
   body {
     overscroll-behavior-y: contain;
+    display: none !important;
   }
 }
 
