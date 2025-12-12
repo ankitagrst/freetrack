@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { reportsAPI, paymentsAPI, expensesAPI } from '../services/api'
+import { useLibrary } from '../context/LibraryContext'
+import { formatCurrency, formatNumber } from '../utils/formatters'
 import { FileText, Download, Calendar, TrendingUp, BarChart3, DollarSign, TrendingDown, X, CreditCard } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
 const Reports = () => {
+  const { selectedLibrary } = useLibrary()
   const [reportType, setReportType] = useState('payments')
   const [loading, setLoading] = useState(false)
   const [reportData, setReportData] = useState(null)
@@ -22,7 +25,7 @@ const Reports = () => {
   const reportTypes = [
     { value: 'payments', label: 'Payment Report' },
     { value: 'members', label: 'Members Report' },
-    { value: 'attendance', label: 'Attendance Report' },
+    // { value: 'attendance', label: 'Attendance Report' },
     { value: 'revenue', label: 'Revenue Report' }
   ]
 
@@ -30,7 +33,7 @@ const Reports = () => {
 
   const fetchYearlyData = async () => {
     try {
-      const response = await paymentsAPI.getAll()
+      const response = await paymentsAPI.getAll({ library_id: selectedLibrary.id })
       let allPayments = []
       
       if (response.success && response.data) {
@@ -80,8 +83,8 @@ const Reports = () => {
   const fetchPLData = async () => {
     try {
       const [paymentsRes, expensesRes] = await Promise.all([
-        paymentsAPI.getAll(),
-        expensesAPI.getAll()
+        paymentsAPI.getAll({ library_id: selectedLibrary.id }),
+        expensesAPI.getAll({ library_id: selectedLibrary.id })
       ])
 
       let payments = []
@@ -132,18 +135,19 @@ const Reports = () => {
     try {
       setLoading(true)
       let response
+      const reportFilters = { ...filters, library_id: selectedLibrary.id }
       switch (reportType) {
         case 'payments':
-          response = await reportsAPI.getPayments(filters)
+          response = await reportsAPI.getPayments(reportFilters)
           break
         case 'members':
-          response = await reportsAPI.getMembers(filters)
+          response = await reportsAPI.getMembers(reportFilters)
           break
-        case 'attendance':
-          response = await reportsAPI.getAttendance(filters)
-          break
+        // case 'attendance':
+        //   response = await reportsAPI.getAttendance(reportFilters)
+        //   break
         case 'revenue':
-          response = await reportsAPI.getRevenue(filters)
+          response = await reportsAPI.getRevenue(reportFilters)
           break
         default:
           response = { success: false }
@@ -203,12 +207,12 @@ const Reports = () => {
             </div>
             <div className="text-center">
               <p className="text-3xl sm:text-4xl font-bold mb-2">
-                Net Profit: ₹{(plData.collections.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) - plData.expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)).toLocaleString('en-IN')}
+                Net Profit: {formatCurrency(plData.collections.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) - plData.expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0))}
               </p>
               <div className="flex items-center justify-center gap-4 sm:gap-8 text-sm sm:text-base">
-                <span>Collection: ₹{plData.collections.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0).toLocaleString('en-IN')}</span>
+                <span>Collection: {formatCurrency(plData.collections.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0))}</span>
                 <span>|</span>
-                <span>Expense: ₹{plData.expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0).toLocaleString('en-IN')}</span>
+                <span>Expense: {formatCurrency(plData.expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0))}</span>
               </div>
             </div>
           </div>
@@ -284,7 +288,7 @@ const Reports = () => {
                       </p>
                       <p className="text-xs sm:text-sm text-gray-600 mt-0.5">{payment.member_name}</p>
                     </div>
-                    <p className="text-lg sm:text-xl font-bold text-green-600">₹{parseFloat(payment.amount).toLocaleString('en-IN')}</p>
+                    <p className="text-lg sm:text-xl font-bold text-green-600">{formatCurrency(payment.amount)}</p>
                   </div>
                 ))
               )}
@@ -308,7 +312,7 @@ const Reports = () => {
                       </p>
                       <p className="text-xs sm:text-sm text-gray-600 mt-0.5">{expense.title || expense.description}</p>
                     </div>
-                    <p className="text-lg sm:text-xl font-bold text-red-600">₹{parseFloat(expense.amount).toLocaleString('en-IN')}</p>
+                    <p className="text-lg sm:text-xl font-bold text-red-600">{formatCurrency(expense.amount)}</p>
                   </div>
                 ))
               )}
@@ -343,7 +347,7 @@ const Reports = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 sm:p-4 border border-blue-200">
               <p className="text-xs sm:text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-xl sm:text-2xl font-bold text-blue-600 mt-1">₹{totalYearlyRevenue.toLocaleString('en-IN')}</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-600 mt-1">{formatCurrency(totalYearlyRevenue)}</p>
               <p className="text-xs text-gray-500 mt-1">{totalYearlyPayments} payments</p>
             </div>
             <button
@@ -354,7 +358,7 @@ const Reports = () => {
               className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 sm:p-4 border border-green-200 hover:shadow-lg transition-all cursor-pointer text-left"
             >
               <p className="text-xs sm:text-sm font-medium text-gray-600">Cash Payments</p>
-              <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">₹{paymentMethodData.cash.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0).toLocaleString('en-IN')}</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">{formatCurrency(paymentMethodData.cash.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0))}</p>
               <p className="text-xs text-gray-500 mt-1">{paymentMethodData.cash.length} transactions</p>
             </button>
             <button
@@ -365,7 +369,7 @@ const Reports = () => {
               className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 sm:p-4 border border-purple-200 hover:shadow-lg transition-all cursor-pointer text-left"
             >
               <p className="text-xs sm:text-sm font-medium text-gray-600">Online Payments</p>
-              <p className="text-xl sm:text-2xl font-bold text-purple-600 mt-1">₹{paymentMethodData.online.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0).toLocaleString('en-IN')}</p>
+              <p className="text-xl sm:text-2xl font-bold text-purple-600 mt-1">{formatCurrency(paymentMethodData.online.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0))}</p>
               <p className="text-xs text-gray-500 mt-1">{paymentMethodData.online.length} transactions</p>
             </button>
           </div>
@@ -419,7 +423,7 @@ const Reports = () => {
                             stroke="white"
                             strokeWidth="2"
                           />
-                          <title>{`${data.month}: ₹${data.amount.toLocaleString('en-IN')} (${percent.toFixed(1)}%)`}</title>
+                          <title>{`${data.month}: ${formatCurrency(data.amount)} (${percent.toFixed(1)}%)`}</title>
                         </g>
                       )
                     })
@@ -429,7 +433,7 @@ const Reports = () => {
                 {/* Center Label */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <p className="text-xs sm:text-sm text-gray-600 font-medium">Total Revenue</p>
-                  <p className="text-xl sm:text-2xl font-bold text-blue-600">₹{totalYearlyRevenue.toLocaleString('en-IN')}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-blue-600">{formatCurrency(totalYearlyRevenue)}</p>
                   <p className="text-xs text-gray-500 mt-1">{selectedYear}</p>
                 </div>
               </div>

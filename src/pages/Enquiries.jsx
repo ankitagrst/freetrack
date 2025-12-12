@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { enquiriesAPI, plansAPI } from '../services/api'
+import { useLibrary } from '../context/LibraryContext'
 import { Mail, MessageSquare, Plus, Edit, Trash2, Phone, Calendar, User, TrendingUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const Enquiries = () => {
+  const { selectedLibrary } = useLibrary()
   const [enquiries, setEnquiries] = useState([])
   const [plans, setPlans] = useState([])
   const [stats, setStats] = useState(null)
@@ -23,16 +25,18 @@ const Enquiries = () => {
   })
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    if (selectedLibrary?.id) {
+      fetchData()
+    }
+  }, [selectedLibrary])
 
   const fetchData = async () => {
     try {
       setLoading(true)
       const [enquiriesRes, plansRes, statsRes] = await Promise.all([
-        enquiriesAPI.getAll().catch(() => ({ success: false, data: [] })),
-        plansAPI.getAll().catch(() => ({ success: false, data: [] })),
-        enquiriesAPI.getStats().catch(() => ({ success: false, data: null }))
+        enquiriesAPI.getAll({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] })),
+        plansAPI.getAll({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] })),
+        enquiriesAPI.getStats({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: null }))
       ])
       
       let enquiriesList = []
@@ -72,7 +76,7 @@ const Enquiries = () => {
         await enquiriesAPI.update(currentEnquiry.id, formData)
         toast.success('Enquiry updated successfully')
       } else {
-        await enquiriesAPI.create(formData)
+        await enquiriesAPI.create({ ...formData, library_id: selectedLibrary.id })
         toast.success('Enquiry created successfully')
       }
       fetchData()
@@ -160,47 +164,47 @@ const Enquiries = () => {
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Total</p>
-                <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{stats.total || 0}</p>
+          <div className="stats-card stats-card-primary">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Total</p>
+                <p className="stats-card-value">{stats.total || 0}</p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                <Mail className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">New</p>
-                <p className="text-2xl sm:text-3xl font-bold text-blue-600 mt-1 sm:mt-2">{stats.new_enquiries || 0}</p>
-              </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+              <div className="stats-card-icon">
+                <Mail className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Converted</p>
-                <p className="text-2xl sm:text-3xl font-bold text-green-600 mt-1 sm:mt-2">{stats.converted || 0}</p>
+          <div className="stats-card stats-card-primary">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">New</p>
+                <p className="stats-card-value">{stats.new_enquiries || 0}</p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <User className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+              <div className="stats-card-icon">
+                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">This Month</p>
-                <p className="text-2xl sm:text-3xl font-bold text-purple-600 mt-1 sm:mt-2">{stats.this_month || 0}</p>
+          <div className="stats-card stats-card-success">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Converted</p>
+                <p className="stats-card-value">{stats.converted || 0}</p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+              <div className="stats-card-icon">
+                <User className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+            </div>
+          </div>
+          <div className="stats-card stats-card-info">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">This Month</p>
+                <p className="stats-card-value">{stats.this_month || 0}</p>
+              </div>
+              <div className="stats-card-icon">
+                <Calendar className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           </div>

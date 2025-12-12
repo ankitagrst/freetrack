@@ -1,17 +1,20 @@
 import { useState, useRef, useEffect } from 'react'
-import { Outlet, Link, useLocation } from 'react-router-dom'
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import ErrorBoundary from '../ErrorBoundary'
 import { useAuth } from '../../context/AuthContext'
+import { useLibrary } from '../../context/LibraryContext'
 import { 
   Menu, X, LayoutDashboard, Users, CreditCard, ClipboardCheck, 
   Receipt, Sofa, Bell, MessageSquare, HelpCircle, FileText, 
-  Settings, LogOut, BookOpen, Shield, MoreHorizontal, UserPlus
+  Settings, LogOut, BookOpen, Shield, MoreHorizontal, UserPlus, Building2
 } from 'lucide-react'
 
 const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const { user, logout } = useAuth()
+  const { selectedLibrary, clearLibrary } = useLibrary()
+  const navigate = useNavigate()
   const location = useLocation()
 
   // Menu items based on user role
@@ -29,9 +32,10 @@ const AppLayout = () => {
     return {
       primary: [
         { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { path: '/libraries', icon: BookOpen, label: 'My Libraries' },
         { path: '/members', icon: Users, label: 'Members' },
         { path: '/payments', icon: CreditCard, label: 'Payments' },
-        { path: '/attendance', icon: ClipboardCheck, label: 'Attendance' },
+        // { path: '/attendance', icon: ClipboardCheck, label: 'Attendance' },
       ],
       secondary: [
         { path: '/expenses', icon: Receipt, label: 'Expenses' },
@@ -127,7 +131,10 @@ const AppLayout = () => {
             </div>
           </div>
           <button
-            onClick={logout}
+            onClick={() => {
+              clearLibrary()
+              logout()
+            }}
             className="flex items-center gap-2 w-full px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white transition-colors"
           >
             <LogOut className="w-4 h-4" />
@@ -140,13 +147,33 @@ const AppLayout = () => {
       <div className="flex-1 flex flex-col overflow-hidden md:ml-64 relative">
         {/* Top Header - Mobile App Bar */}
         <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-20 shadow-sm">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-1">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center md:hidden">
               <BookOpen className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <p className="text-sm font-bold text-gray-900">{user?.libraryName || 'FeeTrack'}</p>
-              <p className="text-xs text-gray-500 hidden sm:block">{user?.email}</p>
+            <div className="flex-1">
+              {user?.role !== 'system_admin' && selectedLibrary ? (
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-primary" />
+                    <p className="text-sm font-bold text-gray-900 truncate max-w-[150px] sm:max-w-none">
+                      {selectedLibrary.library_name}
+                    </p>
+                    <button
+                      onClick={() => navigate('/select-library')}
+                      className="text-xs text-primary hover:text-primary/80 font-medium"
+                    >
+                      Change
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 hidden sm:block">{selectedLibrary.city}, {selectedLibrary.state}</p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm font-bold text-gray-900">FeeTrack</p>
+                  <p className="text-xs text-gray-500 hidden sm:block">{user?.email}</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -167,9 +194,10 @@ const AppLayout = () => {
               <div>User: {user ? user.email : 'Not logged in'}</div>
               <div>Role: {user ? user.role : 'N/A'}</div>
               <div>Path: {location.pathname}</div>
+            {selectedLibrary && <div>Library: {selectedLibrary.library_name} (ID: {selectedLibrary.id})</div>}
             </div>
             <ErrorBoundary>
-              <Outlet />
+              <Outlet key={selectedLibrary?.id || 'no-library'} />
             </ErrorBoundary>
           </div>
         </main>

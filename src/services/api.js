@@ -35,13 +35,13 @@ export const membersAPI = {
     return response.data
   },
   
-  getStats: async () => {
-    const response = await apiClient.get('/members.php?action=stats')
+  getStats: async (params = {}) => {
+    const response = await apiClient.get('/members.php?action=stats', { params })
     return response.data
   },
   
   getById: async (id) => {
-    const response = await apiClient.get(`/members.php?id=${id}`)
+    const response = await apiClient.get('/members.php', { params: { id } })
     return response.data
   },
   
@@ -65,7 +65,7 @@ export const membersAPI = {
   },
   
   delete: async (id) => {
-    const response = await apiClient.delete(`/members.php?id=${id}`)
+    const response = await apiClient.delete('/members.php', { data: { id } })
     return response.data
   }
 }
@@ -77,13 +77,13 @@ export const paymentsAPI = {
     return response.data
   },
   
-  getStats: async () => {
-    const response = await apiClient.get('/payments.php?action=stats')
+  getStats: async (params = {}) => {
+    const response = await apiClient.get('/payments.php?action=stats', { params })
     return response.data
   },
   
-  getMonthlyStats: async () => {
-    const response = await apiClient.get('/payments.php?action=monthly_stats')
+  getMonthlyStats: async (params = {}) => {
+    const response = await apiClient.get('/payments.php?action=monthly_stats', { params })
     return response.data
   },
   
@@ -115,8 +115,8 @@ export const attendanceAPI = {
     return response.data
   },
   
-  getStats: async () => {
-    const response = await apiClient.get('/attendance.php?action=stats')
+  getStats: async (params = {}) => {
+    const response = await apiClient.get('/attendance.php?action=stats', { params })
     return response.data
   },
   
@@ -148,8 +148,8 @@ export const expensesAPI = {
     return response.data
   },
   
-  getStats: async () => {
-    const response = await apiClient.get('/expenses.php?action=stats')
+  getStats: async (params = {}) => {
+    const response = await apiClient.get('/expenses.php?action=stats', { params })
     return response.data
   },
   
@@ -171,8 +171,8 @@ export const expensesAPI = {
 
 // SMS APIs
 export const smsAPI = {
-  getHistory: async () => {
-    const response = await apiClient.get('/sms.php?action=history')
+  getHistory: async (params = {}) => {
+    const response = await apiClient.get('/sms.php?action=history', { params })
     return response.data
   },
   
@@ -199,8 +199,8 @@ export const smsAPI = {
 
 // Notices APIs
 export const noticesAPI = {
-  getAll: async () => {
-    const response = await apiClient.get('/notices.php')
+  getAll: async (params = {}) => {
+    const response = await apiClient.get('/notices.php', { params })
     return response.data
   },
   
@@ -227,8 +227,8 @@ export const enquiriesAPI = {
     return response.data
   },
   
-  getStats: async () => {
-    const response = await apiClient.get('/enquiries.php?action=stats')
+  getStats: async (params = {}) => {
+    const response = await apiClient.get('/enquiries.php?action=stats', { params })
     return response.data
   },
   
@@ -255,13 +255,13 @@ export const enquiriesAPI = {
 
 // Seats APIs
 export const seatsAPI = {
-  getAll: async () => {
-    const response = await apiClient.get('/seats.php')
+  getAll: async (params = {}) => {
+    const response = await apiClient.get('/seats.php', { params })
     return response.data
   },
   
-  getStats: async () => {
-    const response = await apiClient.get('/seats.php?action=stats')
+  getStats: async (params = {}) => {
+    const response = await apiClient.get('/seats.php?action=stats', { params })
     return response.data
   },
   
@@ -323,8 +323,8 @@ export const reportsAPI = {
 
 // Settings APIs
 export const settingsAPI = {
-  get: async () => {
-    const response = await apiClient.get('/settings.php')
+  get: async (params = {}) => {
+    const response = await apiClient.get('/settings.php', { params })
     return response.data
   },
   
@@ -346,13 +346,13 @@ export const settingsAPI = {
 
 // Plans APIs
 export const plansAPI = {
-  getAll: async () => {
-    const response = await apiClient.get('/plans.php')
+  getAll: async (params = {}) => {
+    const response = await apiClient.get('/plans.php', { params })
     return response.data
   },
   
-  getStats: async () => {
-    const response = await apiClient.get('/plans.php?action=stats')
+  getStats: async (params = {}) => {
+    const response = await apiClient.get('/plans.php?action=stats', { params })
     return response.data
   },
   
@@ -417,6 +417,11 @@ export const adminAPI = {
   deleteLibrary: async (id) => {
     const response = await apiClient.delete(`/admin.php?id=${id}`)
     return response.data
+  },
+
+  getExpiringLibraries: async () => {
+    const response = await apiClient.get('/admin.php?action=expiring-libraries')
+    return response.data
   }
 }
 
@@ -445,8 +450,8 @@ export const subscriptionPlansAPI = {
 
 // Waiting List APIs
 export const waitingListAPI = {
-  getAll: async () => {
-    const response = await apiClient.get('/waiting_list.php')
+  getAll: async (params = {}) => {
+    const response = await apiClient.get('/waiting_list.php', { params })
     return response.data
   },
 
@@ -467,6 +472,57 @@ export const waitingListAPI = {
 
   delete: async (id) => {
     const response = await apiClient.delete(`/waiting_list.php?id=${id}`)
+    return response.data
+  }
+}
+
+// Libraries APIs
+export const librariesAPI = {
+  getAll: async () => {
+    const response = await apiClient.get('/libraries.php')
+    return response.data
+  },
+  
+  getById: async (id) => {
+    const response = await apiClient.get(`/libraries.php?id=${id}`)
+    return response.data
+  },
+  
+  create: async (data) => {
+    const response = await apiClient.post('/libraries.php', data)
+    return response.data
+  },
+  
+  update: async (id, data) => {
+    const response = await apiClient.put(`/libraries.php?id=${id}`, data)
+    return response.data
+  },
+  
+  delete: async (id) => {
+    const response = await apiClient.delete(`/libraries.php?id=${id}`)
+    return response.data
+  }
+}
+
+// Library Owners APIs (System Admin)
+export const libraryOwnersAPI = {
+  getAll: async (params = {}) => {
+    const response = await apiClient.get('/library_owners.php', { params })
+    return response.data
+  },
+  
+  getById: async (id) => {
+    const response = await apiClient.get(`/library_owners.php?id=${id}`)
+    return response.data
+  },
+  
+  updateStatus: async (id, status) => {
+    const response = await apiClient.put('/library_owners.php', { id, status })
+    return response.data
+  },
+  
+  delete: async (id) => {
+    const response = await apiClient.delete('/library_owners.php', { data: { id } })
     return response.data
   }
 }

@@ -27,7 +27,8 @@ const Login = () => {
       if (user.role === 'system_admin') {
         navigate('/admin', { replace: true })
       } else {
-        navigate('/dashboard', { replace: true })
+        // Redirect to library selection first
+        navigate('/select-library', { replace: true })
       }
     }
   }, [isAuthenticated, user, navigate])

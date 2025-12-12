@@ -16,7 +16,6 @@
   /* Disable pull-to-refresh on mobile */
   body {
     overscroll-behavior-y: contain;
-    display: none !important;
   }
 }
 
@@ -198,6 +197,67 @@
 
 .stats-card-icon {
   @apply w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center flex-shrink-0;
+}
+
+/* Standardized Color Scheme for Stats Cards */
+.stats-card-primary {
+  @apply border-blue-200;
+}
+
+.stats-card-primary .stats-card-icon {
+  @apply bg-blue-100 text-blue-600;
+}
+
+.stats-card-primary .stats-card-value {
+  @apply text-blue-600;
+}
+
+.stats-card-success {
+  @apply border-green-200;
+}
+
+.stats-card-success .stats-card-icon {
+  @apply bg-green-100 text-green-600;
+}
+
+.stats-card-success .stats-card-value {
+  @apply text-green-600;
+}
+
+.stats-card-warning {
+  @apply border-yellow-200;
+}
+
+.stats-card-warning .stats-card-icon {
+  @apply bg-yellow-100 text-yellow-600;
+}
+
+.stats-card-warning .stats-card-value {
+  @apply text-yellow-600;
+}
+
+.stats-card-danger {
+  @apply border-red-200;
+}
+
+.stats-card-danger .stats-card-icon {
+  @apply bg-red-100 text-red-600;
+}
+
+.stats-card-danger .stats-card-value {
+  @apply text-red-600;
+}
+
+.stats-card-info {
+  @apply border-purple-200;
+}
+
+.stats-card-info .stats-card-icon {
+  @apply bg-purple-100 text-purple-600;
+}
+
+.stats-card-info .stats-card-value {
+  @apply text-purple-600;
 }
 
 /* Hide scrollbar for horizontal scroll */

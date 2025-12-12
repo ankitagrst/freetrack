@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react'
 import { Users, CreditCard, TrendingUp, UserCheck, UserX, Clock, IndianRupee, AlertCircle, Calendar, DollarSign, Plus, IdCard, X } from 'lucide-react'
-import { membersAPI, paymentsAPI, attendanceAPI } from '../services/api'
+import { membersAPI, paymentsAPI /*, attendanceAPI*/ } from '../services/api'
+import { useLibrary } from '../context/LibraryContext'
+import { formatCurrency, formatNumber } from '../utils/formatters'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
 const Dashboard = () => {
+  const { selectedLibrary } = useLibrary()
   const [loading, setLoading] = useState(true)
   const [memberStats, setMemberStats] = useState(null)
   const [paymentStats, setPaymentStats] = useState(null)
-  const [attendanceStats, setAttendanceStats] = useState(null)
+  // const [attendanceStats, setAttendanceStats] = useState(null)
   const [recentActivity, setRecentActivity] = useState([])
   const [monthlyCollections, setMonthlyCollections] = useState([])
   const [todayCollection, setTodayCollection] = useState(0)
@@ -20,19 +23,23 @@ const Dashboard = () => {
   const [filteredMembers, setFilteredMembers] = useState([])
 
   useEffect(() => {
-    fetchDashboardData()
-  }, [])
+    if (selectedLibrary?.id) {
+      fetchDashboardData()
+    }
+  }, [selectedLibrary])
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
       
-      const [membersStatsRes, paymentsStatsRes, attendanceStatsRes, recentPayments, monthlyStats] = await Promise.all([
-        membersAPI.getStats().catch(() => ({ success: false, data: null })),
-        paymentsAPI.getStats().catch(() => ({ success: false, data: null })),
-        attendanceAPI.getStats().catch(() => ({ success: false, data: null })),
-        paymentsAPI.getAll({ limit: 5 }).catch(() => ({ success: false, data: [] })),
-        paymentsAPI.getMonthlyStats().catch(() => ({ success: false, data: [] }))
+      const params = { library_id: selectedLibrary.id }
+      
+      const [membersStatsRes, paymentsStatsRes, /* attendanceStatsRes, */ recentPayments, monthlyStats] = await Promise.all([
+        membersAPI.getStats(params).catch(() => ({ success: false, data: null })),
+        paymentsAPI.getStats(params).catch(() => ({ success: false, data: null })),
+        // attendanceAPI.getStats(params).catch(() => ({ success: false, data: null })),
+        paymentsAPI.getAll({ ...params, limit: 5 }).catch(() => ({ success: false, data: [] })),
+        paymentsAPI.getMonthlyStats(params).catch(() => ({ success: false, data: [] }))
       ])
 
       if (membersStatsRes.success && membersStatsRes.data) {
@@ -46,9 +53,9 @@ const Dashboard = () => {
         setTodayCollection(paymentsStatsRes.data.total_today || 0)
       }
 
-      if (attendanceStatsRes.success && attendanceStatsRes.data) {
-        setAttendanceStats(attendanceStatsRes.data)
-      }
+      // if (attendanceStatsRes.success && attendanceStatsRes.data) {
+      //   setAttendanceStats(attendanceStatsRes.data)
+      // }
 
       // Process monthly collections
       if (monthlyStats.success && monthlyStats.data) {
@@ -80,7 +87,7 @@ const Dashboard = () => {
     setShowMemberModal(true)
     
     try {
-      const response = await membersAPI.getAll()
+      const response = await membersAPI.getAll({ library_id: selectedLibrary.id })
       console.log('Members API Response:', response)
       
       let members = []
@@ -147,7 +154,7 @@ const Dashboard = () => {
     
     try {
       // Fetch payments for this specific month
-      const response = await paymentsAPI.getAll()
+      const response = await paymentsAPI.getAll({ library_id: selectedLibrary.id })
       console.log('Full API Response:', response)
       
       let allPayments = []
@@ -212,8 +219,71 @@ const Dashboard = () => {
     )
   }
 
+  // Calculate days until expiry
+  const getDaysUntilExpiry = () => {
+    console.log('Selected Library:', selectedLibrary)
+    console.log('Subscription End Date:', selectedLibrary?.subscription_end_date)
+    
+    if (!selectedLibrary?.subscription_end_date) {
+      console.log('No subscription_end_date found')
+      return null
+    }
+    
+    const today = new Date()
+    const endDate = new Date(selectedLibrary.subscription_end_date)
+    const diffTime = endDate - today
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    console.log('Days until expiry:', diffDays)
+    return diffDays
+  }
+
+  const daysUntilExpiry = getDaysUntilExpiry()
+  const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry >= 0 && daysUntilExpiry <= 7
+  const isExpired = daysUntilExpiry !== null && daysUntilExpiry < 0
+  
+  console.log('Days until expiry:', daysUntilExpiry, 'Expiring soon:', isExpiringSoon, 'Expired:', isExpired)
+
   return (
     <div className="space-y-6">
+      {/* Expiry Warning */}
+      {isExpired && (
+        <div className="bg-red-50 border-2 border-red-200 rounded-xl p-5">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-6 h-6 text-red-600 shrink-0 mt-1" />
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-red-900 mb-1">
+                Subscription Expired
+              </h3>
+              <p className="text-sm text-red-700">
+                Your subscription expired {Math.abs(daysUntilExpiry)} day{Math.abs(daysUntilExpiry) !== 1 ? 's' : ''} ago. 
+                Please contact the administrator to renew your subscription and continue using the system.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isExpiringSoon && !isExpired && (
+        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-5">
+          <div className="flex items-start gap-3">
+            <Clock className="w-6 h-6 text-yellow-600 shrink-0 mt-1" />
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-yellow-900 mb-1">
+                Subscription Expiring Soon
+              </h3>
+              <p className="text-sm text-yellow-700">
+                Your subscription will expire in {daysUntilExpiry} day{daysUntilExpiry !== 1 ? 's' : ''} 
+                {selectedLibrary?.subscription_end_date && (
+                  <> on {format(new Date(selectedLibrary.subscription_end_date), 'MMM dd, yyyy')}</>
+                )}. 
+                Please contact the administrator to renew.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-primary to-blue-600 rounded-xl shadow-lg p-6 sm:p-8 text-white">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -246,68 +316,68 @@ const Dashboard = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <button
               onClick={() => handleMemberStatClick('total')}
-              className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-6 sm:p-8 hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer text-left"
+              className="stats-card stats-card-primary hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer text-left"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-600">Total Members</p>
-                  <p className="text-3xl sm:text-4xl font-bold text-blue-600 mt-3 break-words">
+              <div className="stats-card-header">
+                <div className="stats-card-content">
+                  <p className="stats-card-label">Total Members</p>
+                  <p className="stats-card-value">
                     {memberStats.total_members || 0}
                   </p>
                 </div>
-                <div className="w-14 h-14 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Users className="w-7 h-7 text-blue-600" />
+                <div className="stats-card-icon">
+                  <Users className="w-7 h-7" />
                 </div>
               </div>
             </button>
 
             <button
               onClick={() => handleMemberStatClick('active')}
-              className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-6 sm:p-8 hover:shadow-lg hover:border-green-300 transition-all cursor-pointer text-left"
+              className="stats-card stats-card-success hover:shadow-lg hover:border-green-300 transition-all cursor-pointer text-left"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-600">Active Members</p>
-                  <p className="text-3xl sm:text-4xl font-bold text-green-600 mt-3 break-words">
+              <div className="stats-card-header">
+                <div className="stats-card-content">
+                  <p className="stats-card-label">Active Members</p>
+                  <p className="stats-card-value">
                     {memberStats.active_members || 0}
                   </p>
                 </div>
-                <div className="w-14 h-14 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <UserCheck className="w-7 h-7 text-green-600" />
+                <div className="stats-card-icon">
+                  <UserCheck className="w-7 h-7" />
                 </div>
               </div>
             </button>
 
             <button
               onClick={() => handleMemberStatClick('expired')}
-              className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-6 sm:p-8 hover:shadow-lg hover:border-red-300 transition-all cursor-pointer text-left"
+              className="stats-card stats-card-danger hover:shadow-lg hover:border-red-300 transition-all cursor-pointer text-left"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-600">Expired Members</p>
-                  <p className="text-3xl sm:text-4xl font-bold text-red-600 mt-3 break-words">
+              <div className="stats-card-header">
+                <div className="stats-card-content">
+                  <p className="stats-card-label">Expired Members</p>
+                  <p className="stats-card-value">
                     {memberStats.expired_members || 0}
                   </p>
                 </div>
-                <div className="w-14 h-14 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <UserX className="w-7 h-7 text-red-600" />
+                <div className="stats-card-icon">
+                  <UserX className="w-7 h-7" />
                 </div>
               </div>
             </button>
 
             <button
               onClick={() => handleMemberStatClick('expiring')}
-              className="bg-white rounded-xl shadow-sm border-2 border-yellow-200 p-6 sm:p-8 hover:shadow-lg hover:border-yellow-300 transition-all cursor-pointer text-left"
+              className="stats-card stats-card-warning hover:shadow-lg hover:border-yellow-300 transition-all cursor-pointer text-left"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-600">Expiring Soon</p>
-                  <p className="text-3xl sm:text-4xl font-bold text-yellow-600 mt-3 break-words">
+              <div className="stats-card-header">
+                <div className="stats-card-content">
+                  <p className="stats-card-label">Expiring Soon</p>
+                  <p className="stats-card-value">
                     {memberStats.expiring_soon || 0}
                   </p>
                 </div>
-                <div className="w-14 h-14 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Clock className="w-7 h-7 text-yellow-600" />
+                <div className="stats-card-icon">
+                  <Clock className="w-7 h-7" />
                 </div>
               </div>
             </button>
@@ -320,62 +390,62 @@ const Dashboard = () => {
         <div>
           <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Payment Statistics</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-white rounded-xl shadow-sm border-2 border-emerald-200 p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">Total Revenue</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-emerald-600 mt-1 sm:mt-2 break-words">
-                    ₹{(paymentStats.total_year || 0).toLocaleString('en-IN')}
+            <div className="stats-card stats-card-success">
+              <div className="stats-card-header">
+                <div className="stats-card-content">
+                  <p className="stats-card-label">Total Revenue</p>
+                  <p className="stats-card-value">
+                    {formatCurrency(paymentStats.total_year || 0)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">This year</p>
                 </div>
-                <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <DollarSign className="w-6 h-6 text-emerald-600" />
+                <div className="stats-card-icon">
+                  <DollarSign className="w-6 h-6" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">This Month</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-blue-600 mt-2 break-words">
-                    ₹{(paymentStats.total_month || 0).toLocaleString('en-IN')}
+            <div className="stats-card stats-card-primary">
+              <div className="stats-card-header">
+                <div className="stats-card-content">
+                  <p className="stats-card-label">This Month</p>
+                  <p className="stats-card-value">
+                    {formatCurrency(paymentStats.total_month || 0)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">Current month</p>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Calendar className="w-6 h-6 text-blue-600" />
+                <div className="stats-card-icon">
+                  <Calendar className="w-6 h-6" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-yellow-200 p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">Pending</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-yellow-600 mt-2 break-words">
+            <div className="stats-card stats-card-warning">
+              <div className="stats-card-header">
+                <div className="stats-card-content">
+                  <p className="stats-card-label">Pending</p>
+                  <p className="stats-card-value">
                     {paymentStats.pending_count || 0}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">Payments</p>
                 </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
+                <div className="stats-card-icon">
+                  <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">Total Count</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-purple-600 mt-1 sm:mt-2">
+            <div className="stats-card stats-card-info">
+              <div className="stats-card-header">
+                <div className="stats-card-content">
+                  <p className="stats-card-label">Total Count</p>
+                  <p className="stats-card-value">
                     {paymentStats.total_count || 0}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">All payments</p>
                 </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+                <div className="stats-card-icon">
+                  <CreditCard className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
               </div>
             </div>
@@ -395,7 +465,7 @@ const Dashboard = () => {
                 <IndianRupee className="w-6 h-6" />
               </div>
             </div>
-            <p className="text-5xl font-bold mb-2">₹{todayCollection.toLocaleString('en-IN')}</p>
+            <p className="text-5xl font-bold mb-2">{formatCurrency(todayCollection)}</p>
             <p className="text-sm opacity-75">{format(new Date(), 'EEEE, MMMM dd, yyyy')}</p>
           </div>
 
@@ -420,7 +490,7 @@ const Dashboard = () => {
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-bold text-indigo-600">
-                        ₹{(month.total || 0).toLocaleString('en-IN')}
+                        {formatCurrency(month.total || 0)}
                       </p>
                       <p className="text-xs text-gray-500">{month.count || 0} payments</p>
                     </div>
@@ -569,7 +639,7 @@ const Dashboard = () => {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-gray-900">₹{payment.amount}</p>
+                  <p className="text-sm font-bold text-gray-900">{formatCurrency(payment.amount)}</p>
                   <p className="text-xs text-gray-500">{payment.status}</p>
                 </div>
               </div>
@@ -645,7 +715,7 @@ const Dashboard = () => {
                           </div>
                         </div>
                         <div className="text-right ml-4">
-                          <p className="text-2xl font-bold text-blue-600">₹{parseFloat(payment.amount).toLocaleString('en-IN')}</p>
+                          <p className="text-2xl font-bold text-blue-600">{formatCurrency(payment.amount)}</p>
                         </div>
                       </div>
                     </div>
@@ -664,7 +734,7 @@ const Dashboard = () => {
                 <div className="text-right">
                   <p className="text-sm text-gray-600">Total Amount</p>
                   <p className="text-3xl font-bold text-blue-600">
-                    ₹{monthPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0).toLocaleString('en-IN')}
+                    {formatCurrency(monthPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0))}
                   </p>
                 </div>
               </div>

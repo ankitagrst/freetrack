@@ -1,23 +1,27 @@
 import { useState, useEffect } from 'react'
 import { smsAPI, membersAPI } from '../services/api'
+import { useLibrary } from '../context/LibraryContext'
 import { Send, MessageSquare } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const SMS = () => {
+  const { selectedLibrary } = useLibrary()
   const [members, setMembers] = useState([])
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({ member_ids: [], message: '', sendToAll: false })
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    if (selectedLibrary?.id) {
+      fetchData()
+    }
+  }, [selectedLibrary])
 
   const fetchData = async () => {
     try {
       const [membersRes, historyRes] = await Promise.all([
-        membersAPI.getAll({ status: 'active' }).catch(() => ({ success: false, data: [] })),
-        smsAPI.getHistory().catch(() => ({ success: false, data: [] }))
+        membersAPI.getAll({ status: 'active', library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] })),
+        smsAPI.getHistory({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] }))
       ])
       
       let membersList = []

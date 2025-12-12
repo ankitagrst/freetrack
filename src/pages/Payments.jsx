@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
 import { paymentsAPI, membersAPI } from '../services/api'
+import { useLibrary } from '../context/LibraryContext'
+import { formatCurrency } from '../utils/formatters'
 import { Plus, Search, IndianRupee, Calendar, Filter, Eye, Edit, Trash2, Receipt, CreditCard, X, Printer } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import InvoiceGenerator from '../components/InvoiceGenerator'
 
 const Payments = () => {
+  const { selectedLibrary } = useLibrary()
   const [payments, setPayments] = useState([])
   const [members, setMembers] = useState([])
   const [stats, setStats] = useState(null)
@@ -13,6 +16,8 @@ const Payments = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [currentPayment, setCurrentPayment] = useState(null)
+  const [showDetailModal, setShowDetailModal] = useState(false)
+  const [detailPayment, setDetailPayment] = useState(null)
   const [filter, setFilter] = useState('all')
   const [paymentTypeFilter, setPaymentTypeFilter] = useState('all')
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all')
@@ -31,16 +36,18 @@ const Payments = () => {
   const [invoicePayment, setInvoicePayment] = useState(null)
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    if (selectedLibrary?.id) {
+      fetchData()
+    }
+  }, [selectedLibrary])
 
   const fetchData = async () => {
     try {
       setLoading(true)
       const [paymentsRes, membersRes, statsRes] = await Promise.all([
-        paymentsAPI.getAll().catch(() => ({ success: false, data: [] })),
-        membersAPI.getAll({ status: 'active' }).catch(() => ({ success: false, data: [] })),
-        paymentsAPI.getStats().catch(() => ({ success: false, data: null }))
+        paymentsAPI.getAll({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] })),
+        membersAPI.getAll({ status: 'active', library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] })),
+        paymentsAPI.getStats({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: null }))
       ])
       
       console.log('Payments response:', paymentsRes)
@@ -147,6 +154,11 @@ const Payments = () => {
     })
   }
 
+  const openDetailModal = (payment) => {
+    setDetailPayment(payment)
+    setShowDetailModal(true)
+  }
+
   const handleDelete = async (id) => {
     if (!confirm('Delete this payment record?')) return
     try {
@@ -238,58 +250,58 @@ const Payments = () => {
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Year</p>
-                <p className="text-2xl sm:text-3xl font-bold text-green-600 mt-1 sm:mt-2 break-words">
-                  ₹{parseFloat(stats.total_year || 0).toLocaleString('en-IN')}
+          <div className="stats-card stats-card-success">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Total Year</p>
+                <p className="stats-card-value">
+                  {formatCurrency(stats.total_year || 0)}
                 </p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+              <div className="stats-card-icon">
+                <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">This Month</p>
-                <p className="text-2xl sm:text-3xl font-bold text-blue-600 mt-1 sm:mt-2 break-words">
-                  ₹{parseFloat(stats.total_month || 0).toLocaleString('en-IN')}
+          <div className="stats-card stats-card-primary">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">This Month</p>
+                <p className="stats-card-value">
+                  {formatCurrency(stats.total_month || 0)}
                 </p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+              <div className="stats-card-icon">
+                <Calendar className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border-2 border-yellow-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Pending</p>
-                <p className="text-2xl sm:text-3xl font-bold text-yellow-600 mt-1 sm:mt-2">
+          <div className="stats-card stats-card-warning">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Pending</p>
+                <p className="stats-card-value">
                   {stats.pending_count || 0}
                 </p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Receipt className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
+              <div className="stats-card-icon">
+                <Receipt className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Count</p>
-                <p className="text-2xl sm:text-3xl font-bold text-purple-600 mt-1 sm:mt-2">
+          <div className="stats-card stats-card-info">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Total Count</p>
+                <p className="stats-card-value">
                   {payments.length}
                 </p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+              <div className="stats-card-icon">
+                <CreditCard className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           </div>
@@ -389,7 +401,7 @@ const Payments = () => {
       </div>
 
       {/* Payments Table */}
-      <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200">
+      <div className="rounded-xl shadow-sm border-gray-200">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
@@ -411,71 +423,66 @@ const Payments = () => {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b-2 border-gray-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Member</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider hidden md:table-cell">Type</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider hidden lg:table-cell">Date</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider hidden lg:table-cell">Method</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredPayments.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{payment.member_name || 'N/A'}</td>
-                    <td className="px-6 py-4 text-sm font-bold text-gray-900">
-                      ₹{parseFloat(payment.amount || 0).toLocaleString('en-IN')}
-                    </td>
-                    <td className="px-6 py-4 text-sm hidden md:table-cell">
-                      <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full capitalize ${getPaymentTypeColor(payment.payment_type)}`}>
-                        {payment.payment_type || 'N/A'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 hidden lg:table-cell">
-                      {payment.payment_date ? format(new Date(payment.payment_date), 'dd MMM yyyy') : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 hidden lg:table-cell capitalize">
-                      {payment.payment_method || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(payment.status)}`}>
+          <div className="grid grid-cols-1 gap-4">
+            {filteredPayments.map((payment) => (
+              <div key={payment.id} className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-lg hover:border-primary/30 transition-all duration-200">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="flex-1">
+                        <h3 className="font-bold text-gray-900 text-lg truncate">{payment.member_name || 'Unknown Member'}</h3>
+                      </div>
+                      <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full capitalize shrink-0 ${getStatusColor(payment.status)}`}>
                         {payment.status || 'pending'}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => openInvoice(payment)}
-                          className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
-                          title="Generate Invoice"
-                        >
-                          <Printer className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => openModal(payment)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(payment.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                    </div>
+                    
+                    {/* Info Row */}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-sm">
+                      <span className="flex items-center gap-1.5 text-gray-600">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <span className="font-medium">{payment.payment_date ? format(new Date(payment.payment_date), 'dd MMM yyyy') : 'No date'}</span>
+                      </span>
+                      <span className="text-gray-300">•</span>
+                      <span className={`inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-md capitalize ${getPaymentTypeColor(payment.payment_type)}`}>
+                        {payment.payment_type || 'Other'}
+                      </span>
+                      <span className="text-gray-300">•</span>
+                      <span className="text-gray-600 font-medium capitalize">{payment.payment_method || 'Cash'}</span>
+                    </div>
+                    
+                    {/* Amount Section */}
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg px-4 py-3 border border-green-100">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xs font-medium text-green-700 uppercase tracking-wide">Amount Paid</span>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <div className="flex items-baseline gap-1 mt-1">
+                        <span className="text-2xl font-bold text-green-700">{formatCurrency(payment.amount || 0)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Actions */}
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <button
+                      onClick={() => openDetailModal(payment)}
+                      className="p-2.5 text-primary hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-primary/20"
+                      title="View Details"
+                    >
+                      <Eye className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => openModal(payment)}
+                      className="p-2.5 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-200"
+                      title="Edit Payment"
+                    >
+                      <Edit className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -602,6 +609,121 @@ const Payments = () => {
           payment={invoicePayment}
           onClose={closeInvoice}
         />
+      )}
+
+      {/* Payment Detail Modal */}
+      {showDetailModal && detailPayment && (
+        <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
+          <div className="bg-white rounded-xl max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowDetailModal(false)} 
+                className="absolute top-4 right-4 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+              
+              <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-6 pb-16 rounded-t-xl">
+                <div className="flex justify-center">
+                  <div className="w-20 h-20 rounded-full bg-white shadow-lg flex items-center justify-center">
+                    <CreditCard className="w-10 h-10 text-green-600" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Info Card */}
+            <div className="px-6 -mt-8 relative z-10">
+              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                {/* Payment Type & Status */}
+                <div className="text-center mb-4">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Payment Details</h3>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full capitalize ${detailPayment.payment_type === 'subscription' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
+                      {detailPayment.payment_type || 'N/A'}
+                    </span>
+                    <span className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full capitalize ${detailPayment.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                      {detailPayment.status || 'pending'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Member Info */}
+                <div className="mb-4 pb-4 border-b">
+                  <p className="text-xs text-gray-500 mb-1">Member</p>
+                  <p className="text-lg font-bold text-gray-900">{detailPayment.member_name || 'N/A'}</p>
+                </div>
+
+                {/* Amount */}
+                <div className="mb-4 pb-4 border-b text-center">
+                  <p className="text-xs text-gray-500 mb-1">Amount Paid</p>
+                  <p className="text-4xl font-bold text-green-600">{formatCurrency(detailPayment.amount || 0)}</p>
+                </div>
+
+                {/* Payment Details Grid */}
+                <div className="grid grid-cols-2 gap-4 mb-4 pb-4 border-b">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Date</p>
+                    <p className="text-base font-bold text-gray-900">
+                      {detailPayment.payment_date ? format(new Date(detailPayment.payment_date), 'dd MMM, yyyy') : 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Method</p>
+                    <p className="text-base font-bold text-gray-900 capitalize">
+                      {detailPayment.payment_method || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Transaction ID */}
+                {detailPayment.transaction_id && (
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-500 mb-1">Transaction ID</p>
+                    <p className="text-sm font-mono font-medium text-gray-700 bg-gray-50 px-3 py-2 rounded">
+                      {detailPayment.transaction_id}
+                    </p>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {detailPayment.notes && (
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-500 mb-1">Notes</p>
+                    <p className="text-sm text-gray-700">{detailPayment.notes}</p>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowDetailModal(false)
+                      openInvoice(detailPayment)
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-semibold transition-colors"
+                  >
+                    <Printer className="w-5 h-5" />
+                    Invoice
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowDetailModal(false)
+                      openModal(detailPayment)
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+                  >
+                    <Edit className="w-5 h-5" />
+                    Edit
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6"></div>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -150,58 +150,58 @@ const Attendance = () => {
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Today Present</p>
-                <p className="text-2xl sm:text-3xl font-bold text-green-600 mt-1 sm:mt-2">
+          <div className="stats-card stats-card-success">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Today Present</p>
+                <p className="stats-card-value">
                   {attendance.filter(a => a.status === 'present').length}
                 </p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <UserCheck className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+              <div className="stats-card-icon">
+                <UserCheck className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Today Absent</p>
-                <p className="text-2xl sm:text-3xl font-bold text-red-600 mt-1 sm:mt-2">
+          <div className="stats-card stats-card-danger">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Today Absent</p>
+                <p className="stats-card-value">
                   {members.length - attendance.filter(a => a.status === 'present').length}
                 </p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <UserX className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
+              <div className="stats-card-icon">
+                <UserX className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">This Month</p>
-                <p className="text-2xl sm:text-3xl font-bold text-blue-600 mt-1 sm:mt-2">
+          <div className="stats-card stats-card-primary">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">This Month</p>
+                <p className="stats-card-value">
                   {stats.monthly_count || 0}
                 </p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+              <div className="stats-card-icon">
+                <Calendar className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Avg. Rate</p>
-                <p className="text-2xl sm:text-3xl font-bold text-purple-600 mt-1 sm:mt-2">
+          <div className="stats-card stats-card-info">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Avg. Rate</p>
+                <p className="stats-card-value">
                   {stats.attendance_rate || 0}%
                 </p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+              <div className="stats-card-icon">
+                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           </div>

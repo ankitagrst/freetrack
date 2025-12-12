@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { seatsAPI, membersAPI } from '../services/api'
+import { useLibrary } from '../context/LibraryContext'
 import { Plus, Users, CheckCircle, XCircle, Edit, Trash2, Armchair, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const Seats = () => {
+  const { selectedLibrary } = useLibrary()
   const [seats, setSeats] = useState([])
   const [members, setMembers] = useState([])
   const [stats, setStats] = useState({ total: 0, available: 0, occupied: 0, occupancy_rate: '0%' })
@@ -21,16 +23,18 @@ const Seats = () => {
   })
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    if (selectedLibrary?.id) {
+      fetchData()
+    }
+  }, [selectedLibrary])
 
   const fetchData = async () => {
     try {
       setLoading(true)
       const [seatsRes, membersRes, statsRes] = await Promise.all([
-        seatsAPI.getAll().catch(() => ({ success: false, data: [] })),
-        membersAPI.getAll({ status: 'active' }).catch(() => ({ success: false, data: [] })),
-        seatsAPI.getStats().catch(() => ({ success: false, data: {} }))
+        seatsAPI.getAll({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] })),
+        membersAPI.getAll({ status: 'active', library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] })),
+        seatsAPI.getStats({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: {} }))
       ])
       
       let seatsList = []
@@ -73,7 +77,8 @@ const Seats = () => {
           start: 1,
           count: count,
           floor: formData.floor,
-          section: formData.section
+          section: formData.section,
+          library_id: selectedLibrary.id
         })
         toast.success(`${count} seat(s) created successfully`)
       } else {
@@ -197,50 +202,50 @@ const Seats = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-4 sm:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-600">Total Seats</p>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-2">{stats.total}</p>
+        <div className="stats-card stats-card-primary">
+          <div className="stats-card-header">
+            <div className="stats-card-content">
+              <p className="stats-card-label">Total Seats</p>
+              <p className="stats-card-value">{stats.total}</p>
             </div>
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Armchair className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-4 sm:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Available</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">{stats.available}</p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-green-600" />
+            <div className="stats-card-icon">
+              <Armchair className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-4 sm:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Occupied</p>
-              <p className="text-3xl font-bold text-red-600 mt-2">{stats.occupied}</p>
+        <div className="stats-card stats-card-success">
+          <div className="stats-card-header">
+            <div className="stats-card-content">
+              <p className="stats-card-label">Available</p>
+              <p className="stats-card-value">{stats.available}</p>
             </div>
-            <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-              <XCircle className="w-6 h-6 text-red-600" />
+            <div className="stats-card-icon">
+              <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-4 sm:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Occupancy</p>
-              <p className="text-3xl font-bold text-purple-600 mt-2">{stats.occupancy_rate}</p>
+        <div className="stats-card stats-card-danger">
+          <div className="stats-card-header">
+            <div className="stats-card-content">
+              <p className="stats-card-label">Occupied</p>
+              <p className="stats-card-value">{stats.occupied}</p>
             </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Users className="w-6 h-6 text-purple-600" />
+            <div className="stats-card-icon">
+              <XCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+            </div>
+          </div>
+        </div>
+
+        <div className="stats-card stats-card-info">
+          <div className="stats-card-header">
+            <div className="stats-card-content">
+              <p className="stats-card-label">Occupancy</p>
+              <p className="stats-card-value">{stats.occupancy_rate}</p>
+            </div>
+            <div className="stats-card-icon">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
         </div>

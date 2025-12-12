@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { plansAPI } from '../services/api'
+import { useLibrary } from '../context/LibraryContext'
+import { formatCurrency } from '../utils/formatters'
 import { Check, CreditCard, Plus, Edit, Trash2, Calendar, IndianRupee, TrendingUp, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const Plans = () => {
+  const { selectedLibrary } = useLibrary()
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -18,13 +21,15 @@ const Plans = () => {
   })
 
   useEffect(() => {
-    fetchPlans()
-  }, [])
+    if (selectedLibrary?.id) {
+      fetchPlans()
+    }
+  }, [selectedLibrary])
 
   const fetchPlans = async () => {
     try {
       setLoading(true)
-      const response = await plansAPI.getAll().catch(() => ({ success: false, data: [] }))
+      const response = await plansAPI.getAll({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] }))
       let plansList = []
       if (response.success && response.data?.plans) {
         plansList = response.data.plans
@@ -46,7 +51,7 @@ const Plans = () => {
         await plansAPI.update(currentPlan.id, formData)
         toast.success('Plan updated successfully')
       } else {
-        await plansAPI.create(formData)
+        await plansAPI.create({ ...formData, library_id: selectedLibrary.id })
         toast.success('Plan created successfully')
       }
       fetchPlans()
@@ -176,7 +181,7 @@ const Plans = () => {
                   <div className="mt-6">
                     <h3 className="text-2xl font-bold mb-2">{plan.plan_name}</h3>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-extrabold">₹{parseFloat(plan.price).toLocaleString('en-IN')}</span>
+                      <span className="text-4xl font-extrabold">{formatCurrency(plan.price)}</span>
                       <span className="text-white/80 text-sm">/{plan.duration_days} days</span>
                     </div>
                   </div>

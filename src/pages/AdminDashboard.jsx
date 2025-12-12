@@ -8,6 +8,7 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('libraries') // 'libraries' or 'plans'
   const [stats, setStats] = useState(null)
   const [libraries, setLibraries] = useState([])
+  const [expiringLibraries, setExpiringLibraries] = useState({ expired: [], expiring_soon: [] })
   const [subscriptionPlans, setSubscriptionPlans] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -30,6 +31,7 @@ const AdminDashboard = () => {
     seat_limit: '',
     features: ''
   })
+  const [selectedPlanIds, setSelectedPlanIds] = useState([])
 
   useEffect(() => {
     fetchData()
@@ -38,10 +40,11 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [statsRes, librariesRes, plansRes] = await Promise.all([
+      const [statsRes, librariesRes, plansRes, expiringRes] = await Promise.all([
         adminAPI.getStats().catch(() => ({ success: false, data: null })),
         adminAPI.getLibraries().catch(() => ({ success: false, data: [] })),
-        subscriptionPlansAPI.getAll().catch(() => ({ success: false, data: [] }))
+        subscriptionPlansAPI.getAll().catch(() => ({ success: false, data: [] })),
+        adminAPI.getExpiringLibraries().catch(() => ({ success: false, data: { expired: [], expiring_soon: [] } }))
       ])
 
       if (statsRes.success && statsRes.data) {
@@ -52,10 +55,28 @@ const AdminDashboard = () => {
         setLibraries(librariesRes.data.libraries)
       }
 
-      if (Array.isArray(plansRes)) {
-        setSubscriptionPlans(plansRes)
-      } else if (plansRes.success && plansRes.data) {
-        setSubscriptionPlans(Array.isArray(plansRes.data) ? plansRes.data : [])
+      // Handle subscription plans response
+      console.log('Raw plansRes:', JSON.stringify(plansRes, null, 2))
+      if (plansRes && plansRes.success && Array.isArray(plansRes.data)) {
+        // Remove duplicates based on plan id
+        const uniquePlans = plansRes.data.filter((plan, index, self) => 
+          index === self.findIndex((p) => p.id === plan.id)
+        )
+        console.log('Plans received:', plansRes.data.length, 'Unique:', uniquePlans.length)
+        console.log('Plan IDs:', plansRes.data.map(p => p.id))
+        setSubscriptionPlans(uniquePlans)
+      } else if (Array.isArray(plansRes)) {
+        // Direct array response (backward compatibility)
+        const uniquePlans = plansRes.filter((plan, index, self) => 
+          index === self.findIndex((p) => p.id === plan.id)
+        )
+        setSubscriptionPlans(uniquePlans)
+      } else {
+        setSubscriptionPlans([])
+      }
+
+      if (expiringRes.success && expiringRes.data) {
+        setExpiringLibraries(expiringRes.data)
       }
     } catch (error) {
       console.error('Error fetching admin data:', error)
@@ -186,6 +207,40 @@ const AdminDashboard = () => {
     }
   }
 
+  const handleTogglePlanSelection = (planId) => {
+    setSelectedPlanIds(prev => 
+      prev.includes(planId) 
+        ? prev.filter(id => id !== planId)
+        : [...prev, planId]
+    )
+  }
+
+  const handleSelectAllPlans = () => {
+    if (selectedPlanIds.length === subscriptionPlans.length) {
+      setSelectedPlanIds([])
+    } else {
+      setSelectedPlanIds(subscriptionPlans.map(plan => plan.id))
+    }
+  }
+
+  const handleBulkDeletePlans = async () => {
+    if (selectedPlanIds.length === 0) {
+      toast.error('Please select at least one plan to delete')
+      return
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedPlanIds.length} plan(s)? Libraries using these plans will be affected.`)) return
+
+    try {
+      await Promise.all(selectedPlanIds.map(id => subscriptionPlansAPI.delete(id)))
+      toast.success(`${selectedPlanIds.length} plan(s) deleted successfully`)
+      setSelectedPlanIds([])
+      fetchData()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete plans')
+    }
+  }
+
   const filteredLibraries = libraries.filter(library => {
     const matchesSearch = library.library_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       library.library_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -256,77 +311,172 @@ const AdminDashboard = () => {
         </div>
       </div>
 
+      {/* Expiring/Expired Libraries Alert */}
+      {activeTab === 'libraries' && (expiringLibraries.expired.length > 0 || expiringLibraries.expiring_soon.length > 0) && (
+        <div className="space-y-4">
+          {/* Expired Libraries Alert */}
+          {expiringLibraries.expired.length > 0 && (
+            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-5">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-6 h-6 text-red-600 shrink-0 mt-1" />
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-red-900 mb-2">
+                    Expired Subscriptions ({expiringLibraries.expired.length})
+                  </h3>
+                  <p className="text-sm text-red-700 mb-3">
+                    The following libraries have expired subscriptions and cannot access the system:
+                  </p>
+                  <div className="space-y-2">
+                    {expiringLibraries.expired.map((library) => (
+                      <div key={library.id} className="bg-white rounded-lg p-3 border border-red-200">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3">
+                              <span className="font-semibold text-gray-900">{library.library_name}</span>
+                              <span className="text-xs text-gray-500">({library.library_code})</span>
+                              <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs font-medium rounded">
+                                Expired {Math.abs(library.days_remaining)} day{Math.abs(library.days_remaining) !== 1 ? 's' : ''} ago
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-600 mt-1">
+                              <span className="font-medium">{library.owner_name}</span> • {library.email}
+                              {library.subscription_plan_name && ` • ${library.subscription_plan_name}`}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => openSubscriptionModal(library)}
+                            className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shrink-0"
+                          >
+                            Renew Now
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Expiring Soon Alert */}
+          {expiringLibraries.expiring_soon.length > 0 && (
+            <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-5">
+              <div className="flex items-start gap-3">
+                <Clock className="w-6 h-6 text-yellow-600 shrink-0 mt-1" />
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-yellow-900 mb-2">
+                    Expiring Soon ({expiringLibraries.expiring_soon.length})
+                  </h3>
+                  <p className="text-sm text-yellow-700 mb-3">
+                    The following libraries will expire within 7 days:
+                  </p>
+                  <div className="space-y-2">
+                    {expiringLibraries.expiring_soon.map((library) => (
+                      <div key={library.id} className="bg-white rounded-lg p-3 border border-yellow-200">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3">
+                              <span className="font-semibold text-gray-900">{library.library_name}</span>
+                              <span className="text-xs text-gray-500">({library.library_code})</span>
+                              <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-medium rounded">
+                                {library.days_remaining === 0 
+                                  ? 'Expires today' 
+                                  : `${library.days_remaining} day${library.days_remaining !== 1 ? 's' : ''} remaining`}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-600 mt-1">
+                              <span className="font-medium">{library.owner_name}</span> • {library.email}
+                              {library.subscription_plan_name && ` • ${library.subscription_plan_name}`}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => openSubscriptionModal(library)}
+                            className="px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-lg hover:bg-yellow-700 transition-colors shrink-0"
+                          >
+                            Extend
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Stats Cards */}
       {activeTab === 'libraries' && stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Libraries</p>
-                <p className="text-3xl font-bold text-blue-600 mt-2">{stats.total_libraries || 0}</p>
+          <div className="stats-card stats-card-primary">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Total Libraries</p>
+                <p className="stats-card-value">{stats.total_libraries || 0}</p>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Building className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Active Libraries</p>
-                <p className="text-3xl font-bold text-green-600 mt-2">{stats.active_libraries || 0}</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-green-600" />
+              <div className="stats-card-icon">
+                <Building className="w-6 h-6" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border-2 border-yellow-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Expiring Soon</p>
-                <p className="text-3xl font-bold text-yellow-600 mt-2">{stats.expiring_soon || 0}</p>
+          <div className="stats-card stats-card-success">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Active Libraries</p>
+                <p className="stats-card-value">{stats.active_libraries || 0}</p>
               </div>
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-6 h-6 text-yellow-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Expired</p>
-                <p className="text-3xl font-bold text-red-600 mt-2">{stats.expired_libraries || 0}</p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
+              <div className="stats-card-icon">
+                <TrendingUp className="w-6 h-6" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Members</p>
-                <p className="text-3xl font-bold text-purple-600 mt-2">{stats.total_members || 0}</p>
+          <div className="stats-card stats-card-warning">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Expiring Soon</p>
+                <p className="stats-card-value">{stats.expiring_soon || 0}</p>
               </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-purple-600" />
+              <div className="stats-card-icon">
+                <Clock className="w-6 h-6" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border-2 border-emerald-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                <p className="text-3xl font-bold text-emerald-600 mt-2">₹{stats.total_revenue || 0}</p>
+          <div className="stats-card stats-card-danger">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Expired</p>
+                <p className="stats-card-value">{stats.expired_libraries || 0}</p>
               </div>
-              <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-emerald-600" />
+              <div className="stats-card-icon">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+            </div>
+          </div>
+
+          <div className="stats-card stats-card-info">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Total Members</p>
+                <p className="stats-card-value">{stats.total_members || 0}</p>
+              </div>
+              <div className="stats-card-icon">
+                <Users className="w-6 h-6" />
+              </div>
+            </div>
+          </div>
+
+          <div className="stats-card stats-card-success">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Total Revenue</p>
+                <p className="stats-card-value">₹{stats.total_revenue || 0}</p>
+              </div>
+              <div className="stats-card-icon">
+                <DollarSign className="w-6 h-6" />
               </div>
             </div>
           </div>
@@ -497,8 +647,34 @@ const AdminDashboard = () => {
       {/* Subscription Plans Tab */}
       {activeTab === 'plans' && (
         <div className="space-y-6">
-          {/* Add Plan Button */}
-          <div className="flex justify-end">
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              {subscriptionPlans.length > 0 && (
+                <>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedPlanIds.length === subscriptionPlans.length && subscriptionPlans.length > 0}
+                      onChange={handleSelectAllPlans}
+                      className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      Select All ({selectedPlanIds.length}/{subscriptionPlans.length})
+                    </span>
+                  </label>
+                  {selectedPlanIds.length > 0 && (
+                    <button 
+                      onClick={handleBulkDeletePlans}
+                      className="btn bg-red-600 text-white hover:bg-red-700 flex items-center gap-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete Selected ({selectedPlanIds.length})
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
             <button onClick={() => openPlanModal()} className="btn btn-primary flex items-center gap-2">
               <Plus className="w-5 h-5" />
               Add New Plan
@@ -525,55 +701,71 @@ const AdminDashboard = () => {
               </div>
             ) : (
               subscriptionPlans.map((plan) => (
-                <div key={plan.id} className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6 hover:border-primary transition-colors">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900">{plan.plan_name}</h3>
-                      <p className="text-sm text-gray-500 capitalize">{plan.plan_type}</p>
+                <div key={plan.id} className={`bg-white rounded-xl shadow-sm border-2 p-6 transition-all ${
+                  selectedPlanIds.includes(plan.id) 
+                    ? 'border-primary bg-blue-50' 
+                    : 'border-gray-200 hover:border-primary'
+                }`}>
+                  <div className="flex items-start gap-3 mb-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedPlanIds.includes(plan.id)}
+                      onChange={() => handleTogglePlanSelection(plan.id)}
+                      className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mt-1 cursor-pointer"
+                    />
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900">{plan.plan_name}</h3>
+                          <p className="text-sm text-gray-500 capitalize">{plan.plan_type}</p>
+                        </div>
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                          plan.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {plan.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
                     </div>
-                    <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                      plan.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {plan.is_active ? 'Active' : 'Inactive'}
-                    </span>
                   </div>
 
-                  <div className="space-y-3 mb-6">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Price</span>
-                      <span className="text-xl font-bold text-primary">₹{plan.price}</span>
+                  <div className="ml-8">
+                    <div className="space-y-3 mb-6">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Price</span>
+                        <span className="text-xl font-bold text-primary">₹{plan.price}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Duration</span>
+                        <span className="text-sm font-semibold text-gray-900">{plan.duration_months} months</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Seat Limit</span>
+                        <span className="text-sm font-semibold text-gray-900">{plan.seat_limit} seats</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Duration</span>
-                      <span className="text-sm font-semibold text-gray-900">{plan.duration_months} months</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Seat Limit</span>
-                      <span className="text-sm font-semibold text-gray-900">{plan.seat_limit} seats</span>
-                    </div>
-                  </div>
 
-                  {plan.features && (
-                    <div className="mb-6 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-600 font-medium mb-1">Features</p>
-                      <p className="text-sm text-gray-700">{plan.features}</p>
-                    </div>
-                  )}
+                    {plan.features && (
+                      <div className="mb-6 p-3 bg-gray-50 rounded-lg">
+                        <p className="text-xs text-gray-600 font-medium mb-1">Features</p>
+                        <p className="text-sm text-gray-700">{plan.features}</p>
+                      </div>
+                    )}
 
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => openPlanModal(plan)}
-                      className="flex-1 btn btn-secondary flex items-center justify-center gap-2"
-                    >
-                      <Edit className="w-4 h-4" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeletePlan(plan.id)}
-                      className="px-4 btn bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => openPlanModal(plan)}
+                        className="flex-1 btn btn-secondary flex items-center justify-center gap-2"
+                      >
+                        <Edit className="w-4 h-4" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeletePlan(plan.id)}
+                        className="px-4 btn bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))

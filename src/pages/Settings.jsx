@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { settingsAPI } from '../services/api'
+import { useLibrary } from '../context/LibraryContext'
 import { Save, Building, Mail, Bell, Lock, CreditCard, Phone, User, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 
 const Settings = () => {
   const { user } = useAuth()
+  const { selectedLibrary } = useLibrary()
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('profile')
   const [formData, setFormData] = useState({
@@ -25,16 +27,18 @@ const Settings = () => {
   })
 
   useEffect(() => {
-    fetchSettings()
-  }, [])
+    if (selectedLibrary?.id) {
+      fetchSettings()
+    }
+  }, [selectedLibrary])
 
   const fetchSettings = async () => {
     try {
-      const response = await settingsAPI.get().catch(() => ({ success: false, data: null }))
+      const response = await settingsAPI.get({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: null }))
       if (response.success && response.data) {
         const profile = response.data.profile || response.data
         setFormData({
-          library_name: profile.library_name || '',
+          library_name: profile.library_name || selectedLibrary.library_name || '',
           address: profile.address || '',
           city: profile.city || '',
           state: profile.state || '',
@@ -42,6 +46,18 @@ const Settings = () => {
           phone: profile.phone || '',
           email: profile.email || '',
           gstin: profile.gstin || profile.gst_number || ''
+        })
+      } else {
+        // If no settings exist, use library data
+        setFormData({
+          library_name: selectedLibrary.library_name || '',
+          address: selectedLibrary.address || '',
+          city: selectedLibrary.city || '',
+          state: selectedLibrary.state || '',
+          pincode: '',
+          phone: '',
+          email: '',
+          gstin: ''
         })
       }
     } catch (error) {
@@ -53,7 +69,7 @@ const Settings = () => {
     e.preventDefault()
     try {
       setLoading(true)
-      await settingsAPI.update({ ...formData, type: 'profile' })
+      await settingsAPI.update({ ...formData, type: 'profile', library_id: selectedLibrary.id })
       toast.success('Settings updated successfully')
     } catch (error) {
       toast.error('Failed to update settings')

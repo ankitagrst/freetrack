@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
 import { membersAPI, plansAPI, seatsAPI, paymentsAPI } from '../services/api'
+import { useLibrary } from '../context/LibraryContext'
+import { formatCurrency } from '../utils/formatters'
 import { Plus, Search, Edit, Trash2, Users, UserCheck, UserX, Clock, X, CreditCard, User, IdCard, RefreshCw, Ban, CheckCircle, Phone, MapPin, Calendar, IndianRupee, Printer, Camera, MessageSquare } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format, differenceInDays } from 'date-fns'
 import InvoiceGenerator from '../components/InvoiceGenerator'
 
 const Members = () => {
+  const { selectedLibrary } = useLibrary()
   const [members, setMembers] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -18,14 +21,9 @@ const Members = () => {
     full_name: '',
     email: '',
     phone: '',
-    password: '',
     plan_id: '1',
-    date_of_birth: '',
     gender: '',
     address: '',
-    city: '',
-    state: '',
-    pincode: '',
     emergency_contact: '',
     id_proof_type: '',
     id_proof_number: '',
@@ -47,6 +45,8 @@ const Members = () => {
   const [showInvoice, setShowInvoice] = useState(false)
   const [invoiceMember, setInvoiceMember] = useState(null)
   const [invoicePayment, setInvoicePayment] = useState(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [memberToDelete, setMemberToDelete] = useState(null)
 
   useEffect(() => {
     fetchData()
@@ -86,7 +86,7 @@ const Members = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await membersAPI.getStats()
+      const response = await membersAPI.getStats({ library_id: selectedLibrary.id })
       if (response.success && response.data) {
         setStats(response.data)
       }
@@ -97,7 +97,7 @@ const Members = () => {
 
   const fetchPlans = async () => {
     try {
-      const response = await plansAPI.getAll()
+      const response = await plansAPI.getAll({ library_id: selectedLibrary.id })
       if (response.success && response.data?.plans) {
         setPlans(response.data.plans)
       } else if (Array.isArray(response.data)) {
@@ -112,7 +112,7 @@ const Members = () => {
 
   const fetchSeats = async () => {
     try {
-      const response = await seatsAPI.getAll({ status: 'available' })
+      const response = await seatsAPI.getAll({ status: 'available', library_id: selectedLibrary.id })
       if (response.success && response.data?.seats) {
         setSeats(response.data.seats)
       } else if (Array.isArray(response.data)) {
@@ -127,7 +127,7 @@ const Members = () => {
 
   const fetchMembers = async () => {
     try {
-      const response = await membersAPI.getAll()
+      const response = await membersAPI.getAll({ library_id: selectedLibrary.id })
       console.log('Members API response:', response)
       
       // Handle different response structures
@@ -268,6 +268,28 @@ const Members = () => {
     setInvoicePayment(null)
   }
 
+  const openDeleteModal = (member) => {
+    setMemberToDelete(member)
+    setShowDeleteModal(true)
+  }
+
+  const handleDeleteMember = async () => {
+    if (!memberToDelete) return
+    
+    try {
+      const response = await membersAPI.delete(memberToDelete.id)
+      if (response.success) {
+        toast.success('Member deleted successfully')
+        setShowDeleteModal(false)
+        setMemberToDelete(null)
+        fetchMembers()
+        fetchStats()
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete member')
+    }
+  }
+
   const openModal = (member = null) => {
     if (member) {
       setCurrentMember(member)
@@ -275,14 +297,9 @@ const Members = () => {
         full_name: member.full_name || member.name,
         email: member.email,
         phone: member.phone,
-        password: '',
         plan_id: member.plan_id || '1',
-        date_of_birth: member.date_of_birth || '',
         gender: member.gender || '',
         address: member.address || '',
-        city: member.city || '',
-        state: member.state || '',
-        pincode: member.pincode || '',
         emergency_contact: member.emergency_contact || '',
         id_proof_type: member.id_proof_type || '',
         id_proof_number: member.id_proof_number || '',
@@ -296,14 +313,9 @@ const Members = () => {
         full_name: '',
         email: '',
         phone: '',
-        password: '',
         plan_id: '1',
-        date_of_birth: '',
         gender: '',
         address: '',
-        city: '',
-        state: '',
-        pincode: '',
         emergency_contact: '',
         id_proof_type: '',
         id_proof_number: '',
@@ -355,58 +367,58 @@ const Members = () => {
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Members</p>
-                <p className="text-2xl sm:text-3xl font-bold text-blue-600 mt-1 sm:mt-2">
+          <div className="stats-card stats-card-primary">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Total Members</p>
+                <p className="stats-card-value">
                   {stats.total_members || 0}
                 </p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Users className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+              <div className="stats-card-icon">
+                <Users className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Active Members</p>
-                <p className="text-2xl sm:text-3xl font-bold text-green-600 mt-1 sm:mt-2">
+          <div className="stats-card stats-card-success">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Active Members</p>
+                <p className="stats-card-value">
                   {stats.active_members || 0}
                 </p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <UserCheck className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+              <div className="stats-card-icon">
+                <UserCheck className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Expired</p>
-                <p className="text-2xl sm:text-3xl font-bold text-red-600 mt-1 sm:mt-2">
+          <div className="stats-card stats-card-danger">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Expired</p>
+                <p className="stats-card-value">
                   {stats.expired_members || 0}
                 </p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <UserX className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
+              <div className="stats-card-icon">
+                <UserX className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border-2 border-yellow-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Expiring Soon</p>
-                <p className="text-2xl sm:text-3xl font-bold text-yellow-600 mt-1 sm:mt-2">
+          <div className="stats-card stats-card-warning">
+            <div className="stats-card-header">
+              <div className="stats-card-content">
+                <p className="stats-card-label">Expiring Soon</p>
+                <p className="stats-card-value">
                   {stats.expiring_soon || 0}
                 </p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
+              <div className="stats-card-icon">
+                <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           </div>
@@ -556,18 +568,12 @@ const Members = () => {
                   </div>
                 </div>
 
-                {/* Contact & Location */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 text-sm">
+                {/* Contact */}
+                <div className="grid grid-cols-1 gap-2 mb-4 text-sm">
                   <div className="flex items-center gap-2 text-gray-600">
                     <Phone className="w-4 h-4" />
                     <span>{member.phone}</span>
                   </div>
-                  {member.city && (
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <MapPin className="w-4 h-4" />
-                      <span>{member.city}</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Plan Details */}
@@ -700,8 +706,8 @@ const Members = () => {
                     )}
                   </button>
                   <button
-                    onClick={() => handleDelete(member.id)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 rounded-lg hover:from-red-600 hover:to-red-700 transition-all shadow-sm"
+                    onClick={() => openDeleteModal(member)}
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-gray-700 to-gray-800 rounded-lg hover:from-gray-800 hover:to-gray-900 transition-all shadow-sm"
                   >
                     <Trash2 className="w-4 h-4" />
                     Delete
@@ -797,7 +803,7 @@ const Members = () => {
                   <option value="">Select Plan</option>
                   {plans.map(plan => (
                     <option key={plan.id} value={plan.id}>
-                      {plan.plan_name} - ₹{plan.price}
+                      {plan.plan_name} - {formatCurrency(plan.price)}
                     </option>
                   ))}
                 </select>
@@ -817,6 +823,60 @@ const Members = () => {
                 </select>
               </div>
 
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  className="input"
+                  placeholder="member@example.com"
+                />
+              </div>
+
+              {/* Legal ID Proof Fields */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">ID Proof Type</label>
+                  <select
+                    value={formData.id_proof_type}
+                    onChange={(e) => setFormData({...formData, id_proof_type: e.target.value})}
+                    className="input"
+                  >
+                    <option value="">Select ID Type</option>
+                    <option value="aadhar">Aadhar Card</option>
+                    <option value="pan">PAN Card</option>
+                    <option value="passport">Passport</option>
+                    <option value="driving_license">Driving License</option>
+                    <option value="voter_id">Voter ID</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">ID Proof Number</label>
+                  <input
+                    type="text"
+                    value={formData.id_proof_number}
+                    onChange={(e) => setFormData({...formData, id_proof_number: e.target.value})}
+                    className="input"
+                    placeholder="Enter ID number"
+                  />
+                </div>
+              </div>
+
+              {/* Address Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Address</label>
+                <textarea
+                  value={formData.address}
+                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  className="input"
+                  rows="3"
+                  placeholder="Full address"
+                />
+              </div>
+
+              {/* Emergency Contact */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Emergency Contact</label>
                 <input
@@ -914,7 +974,7 @@ const Members = () => {
                 <option value="">Select Plan</option>
                 {plans.map(plan => (
                   <option key={plan.id} value={plan.id}>
-                    {plan.plan_name} - ₹{plan.price} ({plan.duration_days} days)
+                    {plan.plan_name} - {formatCurrency(plan.price)} ({plan.duration_days} days)
                   </option>
                 ))}
               </select>
@@ -942,120 +1002,158 @@ const Members = () => {
       {/* Profile Modal */}
       {showProfileModal && profileMember && (
         <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
-          <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Member Profile</h2>
-              <button onClick={() => setShowProfileModal(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
+          <div className="bg-white rounded-xl max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            {/* Header with Photo */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowProfileModal(false)} 
+                className="absolute top-4 right-4 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
               </button>
-            </div>
-            
-            {/* Profile Header */}
-            <div className="flex items-center gap-4 mb-6 pb-6 border-b">
-              <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center border-2 border-gray-200">
-                {profileMember.photo ? (
-                  <img 
-                    src={profileMember.photo} 
-                    alt={profileMember.full_name || profileMember.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.target.style.display = 'none'
-                      e.target.parentElement.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">${(profileMember.full_name || profileMember.name || 'U').charAt(0).toUpperCase()}</div>`
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
-                    {(profileMember.full_name || profileMember.name || 'U').charAt(0).toUpperCase()}
+              
+              <div className="bg-gradient-to-br from-primary to-blue-600 p-6 pb-20 rounded-t-xl">
+                <div className="flex justify-center">
+                  <div className="w-24 h-24 rounded-full overflow-hidden bg-white shadow-lg border-4 border-white">
+                    {profileMember.photo ? (
+                      <img 
+                        src={profileMember.photo} 
+                        alt={profileMember.full_name || profileMember.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none'
+                          e.target.parentElement.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold">${(profileMember.full_name || profileMember.name || 'U').charAt(0).toUpperCase()}</div>`
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold">
+                        {(profileMember.full_name || profileMember.name || 'U').charAt(0).toUpperCase()}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900">{profileMember.full_name || profileMember.name}</h3>
-                <p className="text-gray-600 font-mono">{profileMember.member_code || 'N/A'}</p>
-                <span className={`inline-flex items-center px-2 py-1 text-xs font-bold rounded-full mt-2 ${
-                  profileMember.status === 'active' 
-                    ? 'bg-green-100 text-green-800' 
-                    : profileMember.status === 'inactive'
-                    ? 'bg-gray-100 text-gray-800'
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {profileMember.status}
-                </span>
+                </div>
               </div>
             </div>
 
-            {/* Profile Details Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Email</p>
-                <p className="font-semibold text-gray-900">{profileMember.email}</p>
+            {/* Member Info Card */}
+            <div className="px-6 -mt-12 relative z-10">
+              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                {/* Name and Status */}
+                <div className="text-center mb-4">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-1">{profileMember.full_name || profileMember.name}</h3>
+                  <p className="text-sm text-gray-500 font-mono mb-2">{profileMember.member_code || 'N/A'}</p>
+                  <span className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full ${
+                    profileMember.status === 'active' 
+                      ? 'bg-green-100 text-green-800' 
+                      : profileMember.status === 'inactive'
+                      ? 'bg-gray-100 text-gray-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {profileMember.status}
+                  </span>
+                </div>
+
+                {/* Contact Info */}
+                <div className="flex items-center gap-2 text-gray-600 mb-3 pb-4 border-b">
+                  <Phone className="w-4 h-4" />
+                  <span className="text-sm font-medium">{profileMember.phone}</span>
+                </div>
+
+                {/* Plan & Type */}
+                <div className="grid grid-cols-2 gap-4 mb-4 pb-4 border-b">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Plan</p>
+                    <p className="text-base font-bold text-gray-900">{profileMember.plan_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Type</p>
+                    <p className="text-base font-bold text-gray-900">{profileMember.plan_type || 'Fullday'}</p>
+                  </div>
+                </div>
+
+                {/* Join & Expiry */}
+                <div className="grid grid-cols-2 gap-4 mb-4 pb-4 border-b">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Join</p>
+                    <p className="text-base font-bold text-gray-900">
+                      {profileMember.plan_start_date ? format(new Date(profileMember.plan_start_date), 'dd MMM, yyyy') : 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Expiry</p>
+                    <p className="text-base font-bold text-gray-900">
+                      {profileMember.plan_end_date ? format(new Date(profileMember.plan_end_date), 'dd MMM, yyyy') : 'N/A'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Financial Summary */}
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Amount</p>
+                    <p className="text-lg font-bold text-gray-900">{formatCurrency(profileMember.plan_price || 0)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Paid</p>
+                    <p className="text-lg font-bold text-green-600">{formatCurrency(profileMember.total_paid || 0)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Due</p>
+                    <p className="text-lg font-bold text-red-600">{formatCurrency(profileMember.due_amount || 0)}</p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <a
+                    href={`https://wa.me/91${profileMember.phone}?text=Hello ${profileMember.full_name || profileMember.name}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-colors"
+                  >
+                    <MessageSquare className="w-5 h-5" />
+                    WhatsApp
+                  </a>
+                  <button
+                    onClick={() => {
+                      setShowProfileModal(false)
+                      openPaymentModal(profileMember)
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+                  >
+                    <CreditCard className="w-5 h-5" />
+                    Add Pay
+                  </button>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Phone</p>
-                <p className="font-semibold text-gray-900">{profileMember.phone}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Date of Birth</p>
-                <p className="font-semibold text-gray-900">
-                  {profileMember.date_of_birth ? format(new Date(profileMember.date_of_birth), 'dd MMM, yyyy') : 'N/A'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Gender</p>
-                <p className="font-semibold text-gray-900 capitalize">{profileMember.gender || 'N/A'}</p>
-              </div>
-              <div className="md:col-span-2">
-                <p className="text-xs text-gray-500 mb-1">Address</p>
-                <p className="font-semibold text-gray-900">
-                  {profileMember.address || 'N/A'}
-                  {profileMember.city && `, ${profileMember.city}`}
-                  {profileMember.state && `, ${profileMember.state}`}
-                  {profileMember.pincode && ` - ${profileMember.pincode}`}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Emergency Contact</p>
-                <p className="font-semibold text-gray-900">{profileMember.emergency_contact || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">ID Proof</p>
-                <p className="font-semibold text-gray-900">
-                  {profileMember.id_proof_type ? `${profileMember.id_proof_type.toUpperCase()}: ${profileMember.id_proof_number || 'N/A'}` : 'N/A'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Plan</p>
-                <p className="font-semibold text-gray-900">{profileMember.plan_name || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Seat Number</p>
-                <p className="font-semibold text-gray-900">{profileMember.seat_number || 'Not Assigned'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Enrollment Date</p>
-                <p className="font-semibold text-gray-900">
-                  {profileMember.enrollment_date ? format(new Date(profileMember.enrollment_date), 'dd MMM, yyyy') : 'N/A'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Plan Start Date</p>
-                <p className="font-semibold text-gray-900">
-                  {profileMember.plan_start_date ? format(new Date(profileMember.plan_start_date), 'dd MMM, yyyy') : 'N/A'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Plan End Date</p>
-                <p className="font-semibold text-gray-900">
-                  {profileMember.plan_end_date ? format(new Date(profileMember.plan_end_date), 'dd MMM, yyyy') : 'N/A'}
-                </p>
+
+              {/* Additional Details (Collapsible) */}
+              <div className="mt-4 bg-gray-50 rounded-xl p-4">
+                <h4 className="font-semibold text-gray-900 mb-3 text-sm">Additional Details</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Email:</span>
+                    <span className="font-medium text-gray-900">{profileMember.email}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Seat:</span>
+                    <span className="font-medium text-gray-900">{profileMember.seat_number || 'Not Assigned'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Gender:</span>
+                    <span className="font-medium text-gray-900 capitalize">{profileMember.gender || 'N/A'}</span>
+                  </div>
+                  {profileMember.emergency_contact && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Emergency:</span>
+                      <span className="font-medium text-gray-900">{profileMember.emergency_contact}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end">
-              <button onClick={() => setShowProfileModal(false)} className="btn btn-primary">
-                Close
-              </button>
-            </div>
+            <div className="p-6"></div>
           </div>
         </div>
       )}
@@ -1119,6 +1217,62 @@ const Members = () => {
           payment={invoicePayment}
           onClose={closeInvoice}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && memberToDelete && (
+        <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Confirm Delete</h3>
+              <button
+                onClick={() => { setShowDeleteModal(false); setMemberToDelete(null); }}
+                className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">{memberToDelete.full_name || memberToDelete.name}</p>
+                  <p className="text-sm text-gray-500">{memberToDelete.email}</p>
+                </div>
+              </div>
+              <p className="text-gray-600">
+                Are you sure you want to permanently delete this member? This action cannot be undone and will also delete:
+              </p>
+              <ul className="mt-3 space-y-1 text-sm text-gray-600 list-disc list-inside">
+                <li>All payment records</li>
+                <li>Attendance history</li>
+                <li>Member profile and documents</li>
+                <li>Seat allocation (if any)</li>
+              </ul>
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-800">
+                  <strong>Warning:</strong> This is a permanent action and cannot be reversed.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowDeleteModal(false); setMemberToDelete(null); }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteMember}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
+              >
+                Delete Member
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

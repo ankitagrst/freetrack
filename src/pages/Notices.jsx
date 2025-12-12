@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { noticesAPI } from '../services/api'
+import { useLibrary } from '../context/LibraryContext'
 import { Plus, Bell, Edit, Trash2, AlertCircle, Info, Calendar } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const Notices = () => {
+  const { selectedLibrary } = useLibrary()
   const [notices, setNotices] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -19,13 +21,15 @@ const Notices = () => {
   })
 
   useEffect(() => {
-    fetchNotices()
-  }, [])
+    if (selectedLibrary?.id) {
+      fetchNotices()
+    }
+  }, [selectedLibrary])
 
   const fetchNotices = async () => {
     try {
       setLoading(true)
-      const response = await noticesAPI.getAll().catch(() => ({ success: false, data: [] }))
+      const response = await noticesAPI.getAll({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] }))
       let noticesList = []
       if (response.success && response.data?.notices) {
         noticesList = response.data.notices
@@ -47,7 +51,7 @@ const Notices = () => {
         await noticesAPI.update(currentNotice.id, formData)
         toast.success('Notice updated successfully')
       } else {
-        await noticesAPI.create(formData)
+        await noticesAPI.create({ ...formData, library_id: selectedLibrary.id })
         toast.success('Notice created successfully')
       }
       fetchNotices()
