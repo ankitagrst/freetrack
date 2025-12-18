@@ -21,14 +21,15 @@ const Members = () => {
   const [planFilter, setPlanFilter] = useState('all')
   const [formData, setFormData] = useState({
     full_name: '',
-    email: '',
     phone: '',
     plan_id: '1',
     gender: '',
+    date_of_birth: '',
     address: '',
     emergency_contact: '',
     id_proof_type: '',
     id_proof_number: '',
+    id_proof_photo: '',
     seat_id: '',
     photo: ''
   })
@@ -38,6 +39,7 @@ const Members = () => {
   const [paymentMode, setPaymentMode] = useState('online')
   const [paidAmount, setPaidAmount] = useState('')
   const [photoPreview, setPhotoPreview] = useState(null)
+  const [idProofPhotoPreview, setIdProofPhotoPreview] = useState(null)
   const [plans, setPlans] = useState([])
   const [seats, setSeats] = useState([])
   const [showRenewModal, setShowRenewModal] = useState(false)
@@ -232,16 +234,19 @@ const Members = () => {
     const payload = {
       library_id: selectedLibrary.id,
       full_name: formData.full_name?.trim(),
-      email: formData.email?.trim(),
       phone: trimmedPhone,
       plan_id: Number(formData.plan_id),
       gender: formData.gender,
+      date_of_birth: formData.date_of_birth || null,
       address: formData.address,
       emergency_contact: formData.emergency_contact,
       id_proof_type: formData.id_proof_type,
       id_proof_number: formData.id_proof_number,
+      id_proof_photo: formData.id_proof_photo || null,
       seat_id: seatIdValue,
-      photo: formData.photo
+      photo: formData.photo,
+      plan_start_date: startDate,
+      plan_end_date: expiryDate
     }
 
     try {
@@ -535,18 +540,20 @@ const Members = () => {
       setCurrentMember(member)
       setFormData({
         full_name: member.full_name || member.name,
-        email: member.email,
         phone: member.phone,
         plan_id: member.plan_id || '1',
         gender: member.gender || '',
+        date_of_birth: member.date_of_birth || '',
         address: member.address || '',
         emergency_contact: member.emergency_contact || '',
         id_proof_type: member.id_proof_type || '',
         id_proof_number: member.id_proof_number || '',
+        id_proof_photo: member.id_proof_photo || '',
         seat_id: member.seat_id || '',
         photo: member.photo || ''
       })
       setPhotoPreview(member.photo || null)
+      setIdProofPhotoPreview(member.id_proof_photo || null)
       setPlanAmount(member.plan_price != null ? String(member.plan_price) : '')
       const sd = member.plan_start_date ? format(new Date(member.plan_start_date), 'yyyy-MM-dd') : new Date().toISOString().split('T')[0]
       setStartDate(sd)
@@ -557,18 +564,20 @@ const Members = () => {
       setCurrentMember(null)
       setFormData({
         full_name: '',
-        email: '',
         phone: '',
         plan_id: '1',
         gender: '',
+        date_of_birth: '',
         address: '',
         emergency_contact: '',
         id_proof_type: '',
         id_proof_number: '',
+        id_proof_photo: '',
         seat_id: '',
         photo: ''
       })
       setPhotoPreview(null)
+      setIdProofPhotoPreview(null)
       setPlanAmount('')
       const today = new Date().toISOString().split('T')[0]
       setStartDate(today)
@@ -592,7 +601,7 @@ const Members = () => {
   const filteredMembers = Array.isArray(members) ? members.filter(member => {
     // Search filter
     const matchesSearch = member.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.member_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.phone?.includes(searchTerm)
     
     // Status filter
@@ -1137,7 +1146,14 @@ const Members = () => {
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Plan *</label>
                 <select
                   value={formData.plan_id}
-                  onChange={(e) => setFormData({...formData, plan_id: e.target.value})}
+                  onChange={(e) => {
+                    const newPlanId = e.target.value
+                    setFormData({...formData, plan_id: newPlanId})
+                    const selectedPlan = plans.find(p => String(p.id) === String(newPlanId))
+                    if (selectedPlan) {
+                      setExpiryDate(computeEndDate(selectedPlan, startDate))
+                    }
+                  }}
                   className="input"
                   required
                 >
@@ -1165,14 +1181,44 @@ const Members = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Date of Birth</label>
                 <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  type="date"
+                  value={formData.date_of_birth}
+                  onChange={(e) => setFormData({...formData, date_of_birth: e.target.value})}
                   className="input"
-                  placeholder="member@example.com"
                 />
+              </div>
+
+              {/* Plan Start and End Dates */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Plan Start Date *</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => {
+                      const newStart = e.target.value
+                      setStartDate(newStart)
+                      const selectedPlan = plans.find(p => String(p.id) === String(formData.plan_id))
+                      if (selectedPlan) {
+                        setExpiryDate(computeEndDate(selectedPlan, newStart))
+                      }
+                    }}
+                    className="input"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Plan End Date *</label>
+                  <input
+                    type="date"
+                    value={expiryDate}
+                    onChange={(e) => setExpiryDate(e.target.value)}
+                    className="input"
+                    required
+                  />
+                </div>
               </div>
 
               {/* Legal ID Proof Fields */}
@@ -1202,6 +1248,55 @@ const Members = () => {
                     className="input"
                     placeholder="Enter ID number"
                   />
+                </div>
+              </div>
+
+              {/* ID Proof Photo Upload */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">ID Proof Photo (Optional)</label>
+                <div className="flex items-center gap-4">
+                  <div className="flex-shrink-0">
+                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center border-2 border-gray-200">
+                      {idProofPhotoPreview || formData.id_proof_photo ? (
+                        <img 
+                          src={idProofPhotoPreview || formData.id_proof_photo} 
+                          alt="ID Proof" 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <IdCard className="w-8 h-8 text-gray-400" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('idProofPhotoInput').click()}
+                      className="btn btn-secondary w-full flex items-center justify-center gap-2"
+                    >
+                      <Camera className="w-4 h-4" />
+                      {idProofPhotoPreview || formData.id_proof_photo ? 'Change ID Photo' : 'Upload ID Photo'}
+                    </button>
+                    <input
+                      id="idProofPhotoInput"
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={(e) => {
+                        const file = e.target.files[0]
+                        if (file) {
+                          const reader = new FileReader()
+                          reader.onloadend = () => {
+                            setIdProofPhotoPreview(reader.result)
+                            setFormData({...formData, id_proof_photo: reader.result})
+                          }
+                          reader.readAsDataURL(file)
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Upload a photo of your ID card/document</p>
+                  </div>
                 </div>
               </div>
 
