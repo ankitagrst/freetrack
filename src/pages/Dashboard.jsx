@@ -285,7 +285,7 @@ const Dashboard = () => {
       )}
 
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-primary to-blue-600 rounded-xl shadow-lg p-6 sm:p-8 text-white">
+      <div className="bg-gradient-primary rounded-xl shadow-lg p-6 sm:p-8 text-white">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold mb-2">Welcome to FeeTrack! 👋</h1>
@@ -458,7 +458,7 @@ const Dashboard = () => {
         <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Collection Tracking</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Today's Collection */}
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg p-8 text-white">
+          <div className="bg-gradient-success rounded-xl shadow-lg p-8 text-white">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold opacity-90">Today Collection</h3>
               <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
@@ -478,7 +478,7 @@ const Dashboard = () => {
                   <button
                     key={idx}
                     onClick={() => handleMonthClick(month)}
-                    className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-lg border border-blue-200 hover:border-blue-300 transition-all cursor-pointer"
+                    className="w-full flex items-center justify-between p-4 bg-gradient-muted rounded-lg border border-primary/20 hover:border-primary/40 transition-all cursor-pointer"
                   >
                     <div className="text-left">
                       <p className="text-sm font-semibold text-gray-900">
@@ -577,39 +577,39 @@ const Dashboard = () => {
         <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
           <a
             href="/members"
-            className="flex-shrink-0 flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 border-2 border-blue-200 rounded-lg transition-all min-w-[200px]"
+            className="flex-shrink-0 flex items-center gap-3 px-6 py-4 bg-gradient-primary border-2 border-primary/30 rounded-lg transition-all min-w-[200px] text-white"
           >
-            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-white/15 rounded-lg flex items-center justify-center">
               <Users className="w-6 h-6 text-white" />
             </div>
-            <span className="text-sm font-semibold text-gray-800">Profile</span>
+            <span className="text-sm font-semibold">Profile</span>
           </a>
           <a
             href="/members"
-            className="flex-shrink-0 flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 border-2 border-purple-200 rounded-lg transition-all min-w-[200px]"
+            className="flex-shrink-0 flex items-center gap-3 px-6 py-4 bg-gradient-accent border-2 border-accent/30 rounded-lg transition-all min-w-[200px] text-white"
           >
-            <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-white/15 rounded-lg flex items-center justify-center">
               <IdCard className="w-6 h-6 text-white" />
             </div>
-            <span className="text-sm font-semibold text-gray-800">ID Card</span>
+            <span className="text-sm font-semibold">ID Card</span>
           </a>
           <a
             href="/payments"
-            className="flex-shrink-0 flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 border-2 border-green-200 rounded-lg transition-all min-w-[200px]"
+            className="flex-shrink-0 flex items-center gap-3 px-6 py-4 bg-gradient-success border-2 border-success/30 rounded-lg transition-all min-w-[200px] text-white"
           >
-            <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-white/15 rounded-lg flex items-center justify-center">
               <CreditCard className="w-6 h-6 text-white" />
             </div>
-            <span className="text-sm font-semibold text-gray-800">Invoice</span>
+            <span className="text-sm font-semibold">Invoice</span>
           </a>
           <a
             href="/reports"
-            className="flex-shrink-0 flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 border-2 border-orange-200 rounded-lg transition-all min-w-[200px]"
+            className="flex-shrink-0 flex items-center gap-3 px-6 py-4 bg-gradient-info border-2 border-info/30 rounded-lg transition-all min-w-[200px] text-white"
           >
-            <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-white/15 rounded-lg flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-white" />
             </div>
-            <span className="text-sm font-semibold text-gray-800">Reports</span>
+            <span className="text-sm font-semibold">Reports</span>
           </a>
         </div>
       </div>
@@ -653,14 +653,14 @@ const Dashboard = () => {
         <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
-            <div className="p-6 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between bg-gradient-primary text-white">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">{selectedMonth.month_name}</h2>
-                <p className="text-sm text-gray-600 mt-1">Payment Details - Year {selectedMonth.year}</p>
+                <h2 className="text-2xl font-bold">{selectedMonth.month_name}</h2>
+                <p className="text-sm text-white/80 mt-1">Payment Details - Year {selectedMonth.year}</p>
               </div>
               <button
                 onClick={() => setShowMonthModal(false)}
-                className="text-gray-400 hover:text-gray-600 p-2 hover:bg-white rounded-lg transition-colors"
+                className="text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -677,7 +677,7 @@ const Dashboard = () => {
               ) : (
                 <div className="space-y-3">
                   {monthPayments.map((payment, idx) => (
-                    <div key={payment.id} className="p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors">
+                    <div key={payment.id} className="p-4 bg-gradient-muted rounded-lg border border-gray-200 hover:border-primary/40 transition-colors">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
@@ -689,7 +689,7 @@ const Dashboard = () => {
                               <p className="text-xs text-gray-500">ID: {payment.member_id}</p>
                             </div>
                           </div>
-                          <div className="ml-10 grid grid-cols-2 gap-2 text-sm">
+                          <div className="ml-10 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                             <div>
                               <p className="text-gray-500">Date</p>
                               <p className="font-medium text-gray-900">
@@ -708,14 +708,14 @@ const Dashboard = () => {
                             </div>
                             <div>
                               <p className="text-gray-500">Status</p>
-                              <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${payment.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                              <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${payment.status === 'completed' ? 'bg-success-light text-success-dark' : 'bg-warning-light text-warning-dark'}`}>
                                 {payment.status}
                               </span>
                             </div>
                           </div>
                         </div>
                         <div className="text-right ml-4">
-                          <p className="text-2xl font-bold text-blue-600">{formatCurrency(payment.amount)}</p>
+                          <p className="text-2xl font-bold text-primary">{formatCurrency(payment.amount)}</p>
                         </div>
                       </div>
                     </div>
@@ -725,7 +725,7 @@ const Dashboard = () => {
             </div>
 
             {/* Modal Footer - Totals */}
-            <div className="p-6 border-t border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div className="p-6 border-t border-gray-200 bg-gradient-muted">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total Payments</p>
@@ -733,7 +733,7 @@ const Dashboard = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-gray-600">Total Amount</p>
-                  <p className="text-3xl font-bold text-blue-600">
+                  <p className="text-3xl font-bold text-primary">
                     {formatCurrency(monthPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0))}
                   </p>
                 </div>
@@ -753,19 +753,19 @@ const Dashboard = () => {
         <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[85vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
-            <div className="p-6 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between bg-gradient-primary text-white">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
+                <h2 className="text-2xl font-bold">
                   {selectedMemberType === 'total' && 'All Members'}
                   {selectedMemberType === 'active' && 'Active Members'}
                   {selectedMemberType === 'expired' && 'Expired Members'}
                   {selectedMemberType === 'expiring' && 'Members Expiring Soon'}
                 </h2>
-                <p className="text-sm text-gray-600 mt-1">{filteredMembers.length} members found</p>
+                <p className="text-sm text-white/80 mt-1">{filteredMembers.length} members found</p>
               </div>
               <button
                 onClick={() => setShowMemberModal(false)}
-                className="text-gray-400 hover:text-gray-600 p-2 hover:bg-white rounded-lg transition-colors"
+                className="text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -782,9 +782,9 @@ const Dashboard = () => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {filteredMembers.map((member) => (
-                    <div key={member.id} className="p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors">
+                    <div key={member.id} className="p-4 bg-gradient-muted rounded-lg border border-gray-200 hover:border-primary/40 transition-colors">
                       <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0">
+                        <div className="w-12 h-12 bg-gradient-primary text-white rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0">
                           {member.name?.charAt(0).toUpperCase() || 'M'}
                         </div>
                         <div className="flex-1 min-w-0">

@@ -90,7 +90,7 @@ export default function LibrarySelection() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-muted flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-600 mt-4">Loading your libraries...</p>
@@ -100,23 +100,23 @@ export default function LibrarySelection() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-muted">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center shadow-lg">
                 <Building2 className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">FeeTrack</h1>
+                <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">FeeTrack</h1>
                 <p className="text-xs text-gray-500">{user?.email}</p>
               </div>
             </div>
             <button
               onClick={() => setShowAddModal(true)}
-              className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 text-sm font-medium"
+              className="btn-primary px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 text-sm font-medium"
             >
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Add Library</span>
@@ -129,7 +129,7 @@ export default function LibrarySelection() {
       <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
         {/* Welcome Section */}
         <div className="text-center mb-12 animate-fade-in">
-          <h2 className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-gray-900 via-primary to-blue-600 bg-clip-text text-transparent mb-4">
+          <h2 className="text-4xl sm:text-5xl font-extrabold bg-gradient-primary bg-clip-text text-transparent mb-4">
             {libraries.length === 0 ? 'Welcome to FeeTrack!' : 'Select Your Library'}
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -142,7 +142,7 @@ export default function LibrarySelection() {
         {libraries.length === 0 ? (
           /* Empty State */
           <div className="max-w-md mx-auto bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl p-10 text-center border border-gray-100">
-            <div className="w-24 h-24 bg-gradient-to-br from-primary/20 to-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-6 ring-8 ring-primary/10">
+            <div className="w-24 h-24 bg-primary/15 rounded-full flex items-center justify-center mx-auto mb-6 ring-8 ring-primary/10">
               <Building2 className="w-12 h-12 text-primary" />
             </div>
             <h3 className="text-2xl font-bold text-gray-900 mb-3">No Libraries Yet</h3>
@@ -151,7 +151,7 @@ export default function LibrarySelection() {
             </p>
             <button
               onClick={() => setShowAddModal(true)}
-              className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 w-full flex items-center justify-center gap-2 font-medium"
+              className="bg-gradient-primary text-white px-6 py-3 rounded-xl shadow-lg hover:opacity-90 transition-all duration-200 w-full flex items-center justify-center gap-2 font-medium"
             >
               <Plus className="w-5 h-5" />
               Create Your First Library
@@ -182,7 +182,7 @@ export default function LibrarySelection() {
                   onClick={() => handleSelectLibrary(library)}
                 >
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-blue-600/20 group-hover:from-primary/30 group-hover:to-blue-600/30 rounded-xl flex items-center justify-center transition-all duration-300 ring-4 ring-primary/10">
+                    <div className="w-14 h-14 bg-primary/10 group-hover:bg-primary/15 rounded-xl flex items-center justify-center transition-all duration-300 ring-4 ring-primary/10">
                       <Building2 className="w-7 h-7 text-primary" />
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -220,7 +220,7 @@ export default function LibrarySelection() {
                       </div>
                       <span>{library.total_members || 0} Members</span>
                     </div>
-                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center group-hover:bg-gradient-to-r group-hover:from-primary group-hover:to-blue-600 transition-all duration-300 shadow-md">
+                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center group-hover:bg-primary-dark transition-all duration-300 shadow-md">
                       <ArrowRight className="w-4 h-4 text-white group-hover:translate-x-0.5 transition-transform" />
                     </div>
                   </div>
@@ -235,9 +235,9 @@ export default function LibrarySelection() {
       {showAddModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden animate-slide-up">
-            <div className="sticky top-0 bg-gradient-to-r from-primary to-blue-600 px-6 py-5">
+            <div className="sticky top-0 bg-gradient-primary px-6 py-5">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
                   <Building2 className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-white">Add New Library</h3>
@@ -371,7 +371,7 @@ export default function LibrarySelection() {
                 </button>
                 <button 
                   type="submit" 
-                  className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-white px-6 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 font-medium flex items-center gap-2"
+                  className="bg-gradient-primary text-white px-6 py-2.5 rounded-xl shadow-md hover:opacity-90 transition-all duration-200 font-medium flex items-center gap-2"
                 >
                   <Building2 className="w-4 h-4" />
                   Create Library

@@ -12,13 +12,46 @@ export default {
           dark: '#158a96',
           light: '#2ab4c6'
         },
+        danger: {
+          DEFAULT: '#ef4444',
+          dark: '#dc2626',
+          light: '#fee2e2'
+        },
+        success: {
+          DEFAULT: '#16a34a',
+          dark: '#15803d',
+          light: '#dcfce7'
+        },
+        info: {
+          DEFAULT: '#06b6d4',
+          dark: '#0891b2',
+          light: '#cffafe'
+        },
+        accent: {
+          DEFAULT: '#7c3aed',
+          dark: '#6d28d9',
+          light: '#f5f3ff'
+        },
+        warning: {
+          DEFAULT: '#f59e0b',
+          dark: '#d97706',
+          light: '#fff7ed'
+        },
+        neutral: {
+          DEFAULT: '#6b7280',
+          muted: '#9ca3af'
+        },
         sidebar: {
           DEFAULT: '#050505',
           text: '#F5F1E8'
         },
         bg: {
+          DEFAULT: '#F7F9FB',
           light: '#F5F1E8'
         }
+      },
+      fontFamily: {
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial']
       },
       borderRadius: {
         DEFAULT: '4px'

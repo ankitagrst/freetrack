@@ -34,6 +34,7 @@ const Payments = () => {
   const [showInvoice, setShowInvoice] = useState(false)
   const [invoiceMember, setInvoiceMember] = useState(null)
   const [invoicePayment, setInvoicePayment] = useState(null)
+  const [monthlyBreakdown, setMonthlyBreakdown] = useState([])
 
   useEffect(() => {
     if (selectedLibrary?.id) {
@@ -44,15 +45,13 @@ const Payments = () => {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [paymentsRes, membersRes, statsRes] = await Promise.all([
+      const [paymentsRes, membersRes, statsRes, monthlyRes] = await Promise.all([
         paymentsAPI.getAll({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] })),
         membersAPI.getAll({ status: 'active', library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] })),
-        paymentsAPI.getStats({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: null }))
+        paymentsAPI.getStats({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: null })),
+        paymentsAPI.getMonthlyStats({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] }))
       ])
       
-      console.log('Payments response:', paymentsRes)
-      console.log('Members response:', membersRes)
-      console.log('Stats response:', statsRes)
       
       // Handle payments response
       let paymentsList = []
@@ -85,6 +84,12 @@ const Payments = () => {
       setPayments(paymentsList)
       setMembers(membersList)
       setStats(statsData)
+
+      // Monthly cash/online breakdown
+      let monthly = []
+      if (monthlyRes.success && Array.isArray(monthlyRes.data)) monthly = monthlyRes.data
+      if (Array.isArray(monthlyRes)) monthly = monthlyRes
+      setMonthlyBreakdown(monthly)
     } catch (error) {
       console.error('Error fetching data:', error)
       toast.error('Failed to load payments')
@@ -246,6 +251,31 @@ const Payments = () => {
           Record Payment
         </button>
       </div>
+
+      {/* Monthly Cash / Online Breakdown */}
+      {monthlyBreakdown.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {monthlyBreakdown.map((m, idx) => (
+            <div key={idx} className="bg-white border-2 border-gray-200 rounded-xl p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="text-sm text-gray-500">{m.month_name}, {m.year}</p>
+                  <p className="text-lg font-semibold text-gray-900">₹{(m.total || 0).toLocaleString('en-IN')}</p>
+                </div>
+                <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">{m.count || 0} payments</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Cash</span>
+                <span className="font-semibold text-gray-900">₹{(m.cash_total || 0).toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm mt-1">
+                <span className="text-gray-600">Online</span>
+                <span className="font-semibold text-gray-900">₹{(m.online_total || 0).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Stats Cards */}
       {stats && (
@@ -453,7 +483,7 @@ const Payments = () => {
                     </div>
                     
                     {/* Amount Section */}
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg px-4 py-3 border border-green-100">
+                    <div className="bg-gradient-muted rounded-lg px-4 py-3 border border-green-100">
                       <div className="flex items-baseline gap-2">
                         <span className="text-xs font-medium text-green-700 uppercase tracking-wide">Amount Paid</span>
                       </div>
@@ -607,6 +637,7 @@ const Payments = () => {
         <InvoiceGenerator
           member={invoiceMember}
           payment={invoicePayment}
+          library={selectedLibrary}
           onClose={closeInvoice}
         />
       )}
@@ -624,10 +655,10 @@ const Payments = () => {
                 <X className="w-5 h-5 text-gray-600" />
               </button>
               
-              <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-6 pb-16 rounded-t-xl">
+              <div className="bg-gradient-success p-6 pb-16 rounded-t-xl">
                 <div className="flex justify-center">
                   <div className="w-20 h-20 rounded-full bg-white shadow-lg flex items-center justify-center">
-                    <CreditCard className="w-10 h-10 text-green-600" />
+                    <CreditCard className="w-10 h-10 text-success" />
                   </div>
                 </div>
               </div>
@@ -662,7 +693,7 @@ const Payments = () => {
                 </div>
 
                 {/* Payment Details Grid */}
-                <div className="grid grid-cols-2 gap-4 mb-4 pb-4 border-b">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 pb-4 border-b">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Date</p>
                     <p className="text-base font-bold text-gray-900">

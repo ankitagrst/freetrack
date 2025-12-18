@@ -38,8 +38,8 @@ function App() {
           toastOptions={{
             duration: 3000,
             style: {
-              background: '#363636',
-              color: '#fff',
+              background: '#111827',
+              color: '#F7F9FB',
             },
             success: {
               iconTheme: {

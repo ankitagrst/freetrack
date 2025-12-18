@@ -181,14 +181,14 @@ const Reports = () => {
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <button
             onClick={() => setShowPLReport(!showPLReport)}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-lg hover:from-red-600 hover:to-pink-700 shadow-sm text-sm font-semibold"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 btn-danger rounded-lg shadow-sm text-sm font-semibold"
           >
             <DollarSign className="w-5 h-5" />
             {showPLReport ? 'Hide P&L Report' : 'P&L Report'}
           </button>
           <button
             onClick={() => setShowCollectionReport(!showCollectionReport)}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 shadow-sm text-sm font-semibold"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 btn-primary rounded-lg shadow-sm text-sm font-semibold"
           >
             <BarChart3 className="w-5 h-5" />
             {showCollectionReport ? 'Hide Collection Report' : 'Collection Report'}
@@ -200,7 +200,7 @@ const Reports = () => {
       {showPLReport && (
         <div className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-4 sm:p-6">
           {/* Header */}
-          <div className="bg-gradient-to-r from-red-500 to-pink-600 rounded-lg p-4 sm:p-6 text-white mb-6">
+          <div className="bg-gradient-danger rounded-lg p-4 sm:p-6 text-white mb-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-xl sm:text-2xl font-bold">P&L Report</h2>
               <DollarSign className="w-8 h-8" />
@@ -345,7 +345,7 @@ const Reports = () => {
 
           {/* Stats Summary */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 sm:p-4 border border-blue-200">
+            <div className="bg-gradient-muted rounded-lg p-3 sm:p-4 border border-blue-200">
               <p className="text-xs sm:text-sm font-medium text-gray-600">Total Revenue</p>
               <p className="text-xl sm:text-2xl font-bold text-blue-600 mt-1">{formatCurrency(totalYearlyRevenue)}</p>
               <p className="text-xs text-gray-500 mt-1">{totalYearlyPayments} payments</p>
@@ -355,7 +355,7 @@ const Reports = () => {
                 setSelectedPaymentMethod('cash')
                 setShowPaymentMethodModal(true)
               }}
-              className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 sm:p-4 border border-green-200 hover:shadow-lg transition-all cursor-pointer text-left"
+              className="bg-gradient-muted rounded-lg p-3 sm:p-4 border border-green-200 hover:shadow-lg transition-all cursor-pointer text-left"
             >
               <p className="text-xs sm:text-sm font-medium text-gray-600">Cash Payments</p>
               <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">{formatCurrency(paymentMethodData.cash.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0))}</p>
@@ -366,7 +366,7 @@ const Reports = () => {
                 setSelectedPaymentMethod('online')
                 setShowPaymentMethodModal(true)
               }}
-              className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 sm:p-4 border border-purple-200 hover:shadow-lg transition-all cursor-pointer text-left"
+              className="bg-gradient-muted rounded-lg p-3 sm:p-4 border border-purple-200 hover:shadow-lg transition-all cursor-pointer text-left"
             >
               <p className="text-xs sm:text-sm font-medium text-gray-600">Online Payments</p>
               <p className="text-xl sm:text-2xl font-bold text-purple-600 mt-1">{formatCurrency(paymentMethodData.online.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0))}</p>
@@ -375,7 +375,7 @@ const Reports = () => {
           </div>
 
           {/* Pie Chart */}
-          <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg p-4 sm:p-6 border border-gray-200">
+          <div className="bg-gradient-muted rounded-lg p-4 sm:p-6 border border-gray-200">
             <div className="flex flex-col lg:flex-row items-center justify-center gap-6 lg:gap-12">
               {/* Pie Chart SVG */}
               <div className="relative w-64 h-64 sm:w-80 sm:h-80">
@@ -386,8 +386,8 @@ const Reports = () => {
                     
                     let cumulativePercent = 0
                     const colors = [
-                      '#facc15', '#fb923c', '#34d399', '#f472b6', '#60a5fa', '#f9a8d4',
-                      '#94a3b8', '#d946ef', '#6366f1', '#a78bfa', '#22d3ee', '#2dd4bf'
+                      '#1B9AAA', '#16a34a', '#06b6d4', '#7c3aed', '#f59e0b', '#ef4444',
+                      '#9ca3af', '#158a96', '#15803d', '#0891b2', '#6d28d9', '#d97706'
                     ]
                     
                     return yearlyData.map((data, idx) => {
@@ -444,8 +444,8 @@ const Reports = () => {
                   const total = yearlyData.reduce((sum, d) => sum + d.amount, 0)
                   const percent = total > 0 ? ((data.amount / total) * 100).toFixed(1) : 0
                   const colors = [
-                    'bg-yellow-400', 'bg-orange-400', 'bg-green-400', 'bg-pink-400', 'bg-blue-400', 'bg-rose-400',
-                    'bg-slate-400', 'bg-fuchsia-400', 'bg-indigo-400', 'bg-violet-400', 'bg-cyan-400', 'bg-teal-400'
+                    'bg-primary', 'bg-success', 'bg-info', 'bg-accent', 'bg-warning', 'bg-danger',
+                    'bg-neutral', 'bg-primary-dark', 'bg-success-dark', 'bg-info-dark', 'bg-accent-dark', 'bg-warning-dark'
                   ]
                   
                   return (
@@ -481,9 +481,7 @@ const Reports = () => {
         <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
           <div className="bg-white rounded-xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
-            <div className={`p-6 border-b border-gray-200 flex items-center justify-between ${
-              selectedPaymentMethod === 'cash' ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 'bg-gradient-to-r from-purple-50 to-pink-50'
-            }`}>
+            <div className={`p-6 border-b border-gray-200 flex items-center justify-between bg-gradient-muted`}>
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">
                   {selectedPaymentMethod === 'cash' ? 'Cash Payments' : 'Online Payments'}
@@ -514,14 +512,14 @@ const Reports = () => {
                   {(selectedPaymentMethod === 'cash' ? paymentMethodData.cash : paymentMethodData.online).map((payment, idx) => (
                     <div key={payment.id || idx} className={`p-4 rounded-lg border hover:shadow-sm transition-all ${
                       selectedPaymentMethod === 'cash' 
-                        ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200' 
-                        : 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200'
+                        ? 'bg-gradient-muted border-green-200' 
+                        : 'bg-gradient-muted border-purple-200'
                     }`}>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                              selectedPaymentMethod === 'cash' ? 'bg-green-500 text-white' : 'bg-purple-500 text-white'
+                              selectedPaymentMethod === 'cash' ? 'bg-success text-white' : 'bg-accent text-white'
                             }`}>
                               {idx + 1}
                             </span>
@@ -530,7 +528,7 @@ const Reports = () => {
                               <p className="text-xs text-gray-500">ID: {payment.member_id}</p>
                             </div>
                           </div>
-                          <div className="ml-10 grid grid-cols-2 gap-2 text-sm">
+                          <div className="ml-10 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                             <div>
                               <p className="text-gray-500">Date</p>
                               <p className="font-medium text-gray-900">
@@ -552,7 +550,7 @@ const Reports = () => {
                         </div>
                         <div className="text-right ml-4">
                           <p className={`text-2xl font-bold ${
-                            selectedPaymentMethod === 'cash' ? 'text-green-600' : 'text-purple-600'
+                            selectedPaymentMethod === 'cash' ? 'text-success' : 'text-accent'
                           }`}>
                             ₹{parseFloat(payment.amount).toLocaleString('en-IN')}
                           </p>
@@ -566,7 +564,7 @@ const Reports = () => {
 
             {/* Modal Footer - Totals */}
             <div className={`p-6 border-t border-gray-200 ${
-              selectedPaymentMethod === 'cash' ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 'bg-gradient-to-r from-purple-50 to-pink-50'
+              selectedPaymentMethod === 'cash' ? 'bg-gradient-success' : 'bg-gradient-accent'
             }`}>
               <div className="flex items-center justify-between">
                 <div>
@@ -578,7 +576,7 @@ const Reports = () => {
                 <div className="text-right">
                   <p className="text-sm text-gray-600">Total Amount</p>
                   <p className={`text-3xl font-bold ${
-                    selectedPaymentMethod === 'cash' ? 'text-green-600' : 'text-purple-600'
+                    selectedPaymentMethod === 'cash' ? 'text-success' : 'text-accent'
                   }`}>
                     ₹{(selectedPaymentMethod === 'cash' 
                       ? paymentMethodData.cash.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0)

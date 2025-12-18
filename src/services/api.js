@@ -55,11 +55,12 @@ export const membersAPI = {
     return response.data
   },
   
-  renewMembership: async (memberId, planId) => {
+  renewMembership: async (memberId, planId, options = {}) => {
     const response = await apiClient.post('/members.php', {
       action: 'renew',
       member_id: memberId,
-      plan_id: planId
+      plan_id: planId,
+      ...options
     })
     return response.data
   },

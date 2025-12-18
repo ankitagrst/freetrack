@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
-import { X, Printer, Download } from 'lucide-react'
+import { X, Printer, Share2 } from 'lucide-react'
+import QRCode from 'qrcode'
 
-const InvoiceGenerator = ({ member, payment, onClose }) => {
+const InvoiceGenerator = ({ member, payment, onClose, library }) => {
   const [printing, setPrinting] = useState(false)
+  const [qrDataUrl, setQrDataUrl] = useState(null)
 
   const handlePrint = () => {
     setPrinting(true)
@@ -12,223 +14,177 @@ const InvoiceGenerator = ({ member, payment, onClose }) => {
   }
 
   const libraryInfo = {
-    name: 'FeeTrack Library',
-    address: '123 Library Street, City',
-    phone: '+91 1234567890',
-    email: 'info@feetrack.com'
+    name: library?.library_name || member.library_name || 'Library',
+    address: library?.address || member.library_address || 'Address',
+    phone: library?.phone || member.library_phone || '',
+    email: library?.email || member.library_email || '',
+    website: library?.website || member.library_website || ''
+  }
+
+  const payableAmount = useMemo(() => Number(payment?.amount || member.plan_price || 0), [payment, member])
+  const paidAmount = useMemo(() => Number(payment?.amount || payableAmount), [payment, payableAmount])
+  const dueAmount = Math.max(payableAmount - paidAmount, 0)
+
+  const shareText = useMemo(() => {
+    const name = member.full_name || member.name || 'Member'
+    const code = member.member_code || 'N/A'
+    const invoiceNo = payment?.receipt_number || payment?.id || 'INV'
+    return [
+      `Invoice ${invoiceNo}`,
+      `Member: ${name} (${code})`,
+      `Amount: ₹${payableAmount.toLocaleString('en-IN')}`,
+      `Start: ${member.plan_start_date ? format(new Date(member.plan_start_date), 'dd MMM, yyyy') : 'N/A'}`,
+      `End: ${member.plan_end_date ? format(new Date(member.plan_end_date), 'dd MMM, yyyy') : 'N/A'}`
+    ].join('\n')
+  }, [member, payableAmount, payment])
+
+  useEffect(() => {
+    let isMounted = true
+    const build = async () => {
+      try {
+        const qrText = `FeeTrack Invoice\nMember: ${member.full_name || member.name || ''}\nMember ID: ${member.member_code || ''}\nAmount: ${payableAmount}`
+        const url = await QRCode.toDataURL(qrText, { width: 384, margin: 1 })
+        if (isMounted) setQrDataUrl(url)
+      } catch (e) {
+        console.error('QR generation failed:', e)
+        if (isMounted) setQrDataUrl(null)
+      }
+    }
+    build()
+    return () => {
+      isMounted = false
+    }
+  }, [member, payableAmount])
+
+  const handleShare = async () => {
+    try {
+      if (!qrDataUrl) {
+        alert('QR not ready yet')
+        return
+      }
+      const res = await fetch(qrDataUrl)
+      const blob = await res.blob()
+      const file = new File([blob], `invoice-${member.member_code || member.id}.png`, { type: blob.type || 'image/png' })
+
+      if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
+        await navigator.share({ text: shareText, files: [file] })
+        return
+      }
+
+      await navigator.clipboard?.writeText?.(shareText)
+      alert('Share not supported on this device. Invoice text copied to clipboard.')
+    } catch (e) {
+      console.error('Share failed:', e)
+      alert('Unable to share invoice on this device.')
+    }
   }
 
   return (
-    <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
-      <div className="bg-white rounded-lg max-w-3xl w-full max-h-[95vh] overflow-y-auto">
-        {/* Print Header - Hidden on screen */}
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] overflow-y-auto">
         <style>{`
           @media print {
-            body * {
-              visibility: hidden;
-            }
-            .print-area, .print-area * {
-              visibility: visible;
-            }
-            .print-area {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-            }
-            .no-print {
-              display: none !important;
-            }
+            body * { visibility: hidden; }
+            .print-area, .print-area * { visibility: visible; }
+            .print-area { position: absolute; inset: 0; width: 100%; }
+            .no-print { display: none !important; }
           }
         `}</style>
 
-        {/* Action Buttons - Not printed */}
-        <div className="no-print flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
-          <h2 className="text-xl font-bold text-gray-900">Invoice / Receipt</h2>
+        <div className="no-print flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-b bg-white sticky top-0 z-10 rounded-t-xl">
+          <h2 className="text-lg font-semibold text-gray-900">Invoice</h2>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handlePrint}
-              className="btn btn-primary flex items-center gap-2"
-              disabled={printing}
-            >
+            <button onClick={handleShare} className="btn btn-primary flex items-center gap-2">
+              <Share2 className="w-4 h-4" />
+              Share
+            </button>
+            <button onClick={handlePrint} className="btn btn-primary flex items-center gap-2" disabled={printing}>
               <Printer className="w-4 h-4" />
               Print
             </button>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg"
-            >
+            <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg">
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Invoice Content - This gets printed */}
-        <div className="print-area p-8">
-          {/* Header */}
-          <div className="border-b-2 border-gray-300 pb-6 mb-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{libraryInfo.name}</h1>
-                <p className="text-sm text-gray-600 mt-2">{libraryInfo.address}</p>
-                <p className="text-sm text-gray-600">Phone: {libraryInfo.phone}</p>
-                <p className="text-sm text-gray-600">Email: {libraryInfo.email}</p>
-              </div>
-              <div className="text-right">
-                <h2 className="text-2xl font-bold text-primary">INVOICE</h2>
-                <p className="text-sm text-gray-600 mt-2">
-                  Date: {format(new Date(), 'dd MMM, yyyy')}
-                </p>
-                {payment && (
-                  <p className="text-sm text-gray-600">
-                    Invoice #: INV-{payment.id || '000'}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Bill To */}
-          <div className="mb-8">
-            <h3 className="text-lg font-bold text-gray-900 mb-3">Bill To:</h3>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="font-semibold text-gray-900 text-lg">{member.full_name || member.name}</p>
-              <p className="text-sm text-gray-600 mt-1">Member ID: {member.member_code || 'N/A'}</p>
-              <p className="text-sm text-gray-600">Email: {member.email}</p>
-              <p className="text-sm text-gray-600">Phone: {member.phone}</p>
-              {member.address && (
-                <p className="text-sm text-gray-600">
-                  Address: {member.address}
-                  {member.city && `, ${member.city}`}
-                  {member.state && `, ${member.state}`}
-                  {member.pincode && ` - ${member.pincode}`}
+        <div className="print-area px-4 sm:px-8 py-6">
+          {/* Top Brand Row */}
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pb-4 border-b border-gray-200">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold tracking-wide text-gray-900 break-words">{libraryInfo.name}</h1>
+              {libraryInfo.address && <p className="text-sm text-gray-700 mt-1 break-words">{libraryInfo.address}</p>}
+              {(libraryInfo.phone || libraryInfo.email) && (
+                <p className="text-sm text-gray-600 mt-1">
+                  {libraryInfo.phone && <span>Ph: {libraryInfo.phone}</span>}
+                  {libraryInfo.phone && libraryInfo.email && ' · '}
+                  {libraryInfo.email && <span>Email: {libraryInfo.email}</span>}
                 </p>
               )}
             </div>
+            <div className="text-left sm:text-right text-sm text-gray-700">
+              <p>Invoice : <span className="font-semibold">{payment?.receipt_number || `INV${payment?.id || member.id || ''}`}</span></p>
+              <p>Date : {format(new Date(), 'dd-MM-yyyy')}</p>
+            </div>
           </div>
 
-          {/* Invoice Details Table */}
-          <div className="mb-8">
-            <table className="w-full border-collapse">
+          {/* Parties */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 py-4 text-sm text-gray-800">
+            <div className="space-y-1">
+              <p><span className="font-semibold">Name :</span> {member.full_name || member.name}</p>
+              <p><span className="font-semibold">Address :</span> {member.address || member.city || '—'}</p>
+              <p><span className="font-semibold">Mobile :</span> {member.phone || '—'}</p>
+              <p><span className="font-semibold">Member ID :</span> {member.member_code || '—'}</p>
+              <p><span className="font-semibold">Seat No :</span> {member.seat_number || '—'}</p>
+            </div>
+            <div className="text-left sm:text-right space-y-1">
+              <p className="font-semibold">{libraryInfo.name}</p>
+              {libraryInfo.address && <p>{libraryInfo.address}</p>}
+              {libraryInfo.email && <p>Email: {libraryInfo.email}</p>}
+              {libraryInfo.phone && <p>Phone: {libraryInfo.phone}</p>}
+              {libraryInfo.website && <p>Website: {libraryInfo.website}</p>}
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] border-collapse text-sm text-gray-900 mb-4">
               <thead>
-                <tr className="bg-gray-900 text-white">
-                  <th className="border border-gray-900 p-3 text-left">Description</th>
-                  <th className="border border-gray-900 p-3 text-center">Plan</th>
-                  <th className="border border-gray-900 p-3 text-center">Seat</th>
-                  <th className="border border-gray-900 p-3 text-center">Start Date</th>
-                  <th className="border border-gray-900 p-3 text-center">End Date</th>
-                  <th className="border border-gray-900 p-3 text-right">Amount</th>
+                <tr className="bg-gray-100">
+                  <th className="border px-3 py-2 text-left">Invoice Date</th>
+                  <th className="border px-3 py-2 text-left">Program</th>
+                  <th className="border px-3 py-2 text-left">Start Date</th>
+                  <th className="border px-3 py-2 text-left">Expiry Date</th>
+                  <th className="border px-3 py-2 text-right">Amount</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td className="border border-gray-300 p-3">
-                    <span className="font-semibold">
-                      {payment?.payment_type === 'renewal' ? 'Membership Renewal' : 'Membership Fee'}
-                    </span>
-                    <br />
-                    <span className="text-xs text-gray-500">
-                      {payment?.notes || 'Library membership subscription'}
-                    </span>
-                  </td>
-                  <td className="border border-gray-300 p-3 text-center">
-                    {member.plan_name || 'Full Time'}
-                  </td>
-                  <td className="border border-gray-300 p-3 text-center">
-                    {member.seat_number || 'Not Assigned'}
-                  </td>
-                  <td className="border border-gray-300 p-3 text-center">
-                    {member.plan_start_date 
-                      ? format(new Date(member.plan_start_date), 'dd MMM, yyyy')
-                      : 'N/A'}
-                  </td>
-                  <td className="border border-gray-300 p-3 text-center">
-                    {member.plan_end_date 
-                      ? format(new Date(member.plan_end_date), 'dd MMM, yyyy')
-                      : 'N/A'}
-                  </td>
-                  <td className="border border-gray-300 p-3 text-right font-semibold">
-                    ₹{(payment?.amount || member.plan_price || 0).toLocaleString('en-IN')}
-                  </td>
+                  <td className="border px-3 py-2">{format(new Date(), 'dd-MM-yyyy')}</td>
+                  <td className="border px-3 py-2">{member.plan_name || 'Full Time'}</td>
+                  <td className="border px-3 py-2">{member.plan_start_date ? format(new Date(member.plan_start_date), 'dd-MM-yyyy') : '—'}</td>
+                  <td className="border px-3 py-2">{member.plan_end_date ? format(new Date(member.plan_end_date), 'dd-MM-yyyy') : '—'}</td>
+                  <td className="border px-3 py-2 text-right">{payableAmount.toLocaleString('en-IN')}</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          {/* Totals */}
-          <div className="flex justify-end mb-8">
-            <div className="w-64">
-              <div className="flex justify-between py-2 border-b border-gray-300">
-                <span className="text-gray-600">Subtotal:</span>
-                <span className="font-semibold">
-                  ₹{(payment?.amount || member.plan_price || 0).toLocaleString('en-IN')}
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-gray-300">
-                <span className="text-gray-600">Tax (0%):</span>
-                <span className="font-semibold">₹0.00</span>
-              </div>
-              <div className="flex justify-between py-3 bg-gray-900 text-white px-4 rounded mt-2">
-                <span className="text-lg font-bold">Total:</span>
-                <span className="text-lg font-bold">
-                  ₹{(payment?.amount || member.plan_price || 0).toLocaleString('en-IN')}
-                </span>
-              </div>
-            </div>
+          {/* Amounts */}
+          <div className="text-right space-y-1 text-sm text-gray-900">
+            <p>Enrollment Fee <span className="ml-4">0</span></p>
+            <p>Discount <span className="ml-4">0</span></p>
+            <p className="font-bold">Final Amount <span className="ml-4">{payableAmount.toLocaleString('en-IN')}</span></p>
+            <p className="font-bold">Paid Amount <span className="ml-4">{paidAmount.toLocaleString('en-IN')}</span></p>
+            <p className="font-bold">Due Amount <span className="ml-4">{dueAmount.toLocaleString('en-IN')}</span></p>
           </div>
 
-          {/* Payment Details */}
-          {payment && (
-            <div className="mb-8 bg-green-50 border border-green-200 rounded-lg p-4">
-              <h3 className="text-lg font-bold text-green-900 mb-2">Payment Information</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-600">Payment Method:</span>
-                  <span className="ml-2 font-semibold capitalize">{payment.payment_method || 'Cash'}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Payment Date:</span>
-                  <span className="ml-2 font-semibold">
-                    {payment.payment_date 
-                      ? format(new Date(payment.payment_date), 'dd MMM, yyyy')
-                      : format(new Date(), 'dd MMM, yyyy')}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Status:</span>
-                  <span className="ml-2 font-semibold text-green-600 capitalize">
-                    {payment.status || 'Paid'}
-                  </span>
-                </div>
-                {payment.transaction_id && (
-                  <div>
-                    <span className="text-gray-600">Transaction ID:</span>
-                    <span className="ml-2 font-semibold">{payment.transaction_id}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Footer */}
-          <div className="border-t-2 border-gray-300 pt-6 mt-8">
-            <p className="text-sm text-gray-600 text-center">
-              Thank you for your business! For any queries, please contact us at {libraryInfo.phone}
-            </p>
-            <p className="text-xs text-gray-500 text-center mt-2">
-              This is a computer-generated invoice and does not require a signature.
-            </p>
-          </div>
-
-          {/* Stamp/Seal Area */}
-          <div className="mt-12 flex justify-between items-end">
-            <div className="text-center">
-              <div className="border-t-2 border-gray-400 pt-2 w-48">
-                <p className="text-sm text-gray-600">Authorized Signature</p>
-              </div>
-            </div>
-            <div className="w-32 h-32 border-2 border-gray-300 rounded-full flex items-center justify-center">
-              <p className="text-xs text-gray-400 text-center">Library<br/>Seal</p>
+          {/* QR / Note */}
+          <div className="mt-6 flex flex-col items-center gap-3 text-sm text-gray-800">
+            {qrDataUrl && <img src={qrDataUrl} alt="Invoice QR" className="w-40 h-40" />}
+            <div className="text-center leading-relaxed">
+              <p>"Any student displaying misbehavior will face strict legal action."</p>
+              <p>"Fee is non-refundable under any circumstances."</p>
             </div>
           </div>
         </div>

@@ -110,7 +110,7 @@ const WaitingList = () => {
       </div>
 
       {/* Stats Card */}
-      <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-lg p-8 text-white">
+      <div className="bg-gradient-danger rounded-xl shadow-lg p-8 text-white">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-lg font-semibold opacity-90 mb-2">Total Waiting</p>
@@ -151,12 +151,12 @@ const WaitingList = () => {
               {waitingList.map((person) => (
                 <div
                   key={person.id}
-                  className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 sm:p-5 border-2 border-gray-200 hover:border-orange-300 hover:shadow-md transition-all"
+                  className="bg-gradient-muted rounded-lg p-4 sm:p-5 border-2 border-gray-200 hover:border-danger/40 hover:shadow-md transition-all"
                 >
                   {/* Person Info */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0">
+                      <div className="w-12 h-12 bg-gradient-danger rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0">
                         {person.name.charAt(0).toUpperCase()}
                       </div>
                       <div>

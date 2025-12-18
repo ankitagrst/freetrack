@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,8 +9,8 @@
     @apply border-gray-200;
   }
   body {
-    @apply bg-gray-50 text-gray-800;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    @apply bg-bg text-gray-800;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -34,7 +36,23 @@
   }
   
   .btn-danger {
-    @apply bg-red-600 text-white hover:bg-red-700 shadow-md shadow-red-600/20;
+    @apply bg-danger text-white hover:bg-danger-dark shadow-md shadow-danger/20;
+  }
+
+  .btn-success {
+    @apply bg-success text-white hover:bg-success-dark shadow-md shadow-success/20;
+  }
+
+  .btn-info {
+    @apply bg-info text-white hover:bg-info-dark shadow-md shadow-info/20;
+  }
+
+  .btn-accent {
+    @apply bg-purple-600 text-white hover:bg-purple-700 shadow-md shadow-purple-600/20;
+  }
+
+  .btn-warning {
+    @apply bg-warning text-white hover:bg-warning-dark shadow-md shadow-warning/20;
   }
   
   .input {
@@ -55,6 +73,28 @@
     @apply bg-white rounded-xl shadow-sm p-4 mb-3 border border-gray-100 hover:shadow-md transition-all;
   }
 }
+
+/* Brand and semantic gradient utilities */
+@layer components {
+  .bg-gradient-primary { @apply bg-gradient-to-r from-primary to-primary-dark; }
+  .bg-gradient-danger { @apply bg-gradient-to-r from-danger to-danger-dark; }
+  .bg-gradient-success { @apply bg-gradient-to-r from-success to-success-dark; }
+  .bg-gradient-info { @apply bg-gradient-to-r from-info to-info-dark; }
+  .bg-gradient-accent { @apply bg-gradient-to-r from-accent to-accent-dark; }
+  .bg-gradient-muted { @apply bg-gradient-to-r from-gray-50 to-gray-100; }
+
+  .text-muted { @apply text-neutral; }
+  .text-body { @apply text-gray-800; }
+}
+
+:root {
+  --color-bg: #F7F9FB;
+  --color-surface: #FFFFFF;
+  --color-text: #111827;
+  --color-muted: #6B7280;
+}
+
+body { background-color: var(--color-bg); color: var(--color-text); }
 
 /* Safe area insets for notched devices */
 .safe-area-bottom {

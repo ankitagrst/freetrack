@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { membersAPI, plansAPI, seatsAPI, paymentsAPI } from '../services/api'
 import { useLibrary } from '../context/LibraryContext'
 import { formatCurrency } from '../utils/formatters'
 import { Plus, Search, Edit, Trash2, Users, UserCheck, UserX, Clock, X, CreditCard, User, IdCard, RefreshCw, Ban, CheckCircle, Phone, MapPin, Calendar, IndianRupee, Printer, Camera, MessageSquare } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { format, differenceInDays } from 'date-fns'
+import { format, differenceInDays, addMonths, addDays } from 'date-fns'
 import InvoiceGenerator from '../components/InvoiceGenerator'
+import QRCode from 'qrcode'
 
 const Members = () => {
   const { selectedLibrary } = useLibrary()
@@ -16,6 +17,7 @@ const Members = () => {
   const [showModal, setShowModal] = useState(false)
   const [currentMember, setCurrentMember] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [membershipFilter, setMembershipFilter] = useState('all') // all|active|expired|expiring
   const [planFilter, setPlanFilter] = useState('all')
   const [formData, setFormData] = useState({
     full_name: '',
@@ -30,13 +32,19 @@ const Members = () => {
     seat_id: '',
     photo: ''
   })
+  const [planAmount, setPlanAmount] = useState('')
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
+  const [expiryDate, setExpiryDate] = useState('')
+  const [paymentMode, setPaymentMode] = useState('online')
+  const [paidAmount, setPaidAmount] = useState('')
   const [photoPreview, setPhotoPreview] = useState(null)
-  const fileInputRef = useState(null)
   const [plans, setPlans] = useState([])
   const [seats, setSeats] = useState([])
   const [showRenewModal, setShowRenewModal] = useState(false)
   const [renewMember, setRenewMember] = useState(null)
   const [renewPlanId, setRenewPlanId] = useState('')
+  const [renewPaymentMode, setRenewPaymentMode] = useState('cash') // cash|upi
+  const [renewAmount, setRenewAmount] = useState('')
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [profileMember, setProfileMember] = useState(null)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
@@ -47,38 +55,85 @@ const Members = () => {
   const [invoicePayment, setInvoicePayment] = useState(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [memberToDelete, setMemberToDelete] = useState(null)
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false)
+  const [whatsAppMember, setWhatsAppMember] = useState(null)
+  const [selectedTemplate, setSelectedTemplate] = useState('')
+  const [customMessage, setCustomMessage] = useState('')
+  const [showTemplateList, setShowTemplateList] = useState(false)
+  const templateRef = useRef(null)
+
+  const templates = [
+    { key: 'membership', label: 'Membership' },
+    { key: 'due', label: 'Due Payment Reminder' },
+    { key: 'renewal', label: 'Renewal' },
+    { key: 'birthday', label: 'Birthday' },
+    { key: 'offers', label: 'Offers' },
+    { key: 'holiday', label: 'Holiday' }
+  ]
+
+  const computeEndDate = (planObj, start) => {
+    if (!planObj || !start) return ''
+    const planType = (planObj.plan_type || '').toLowerCase()
+    const durationDays = Number(planObj.duration_days || 0)
+    const startDateObj = new Date(start)
+    
+    const monthsMap = {
+      'monthly': 1,
+      'quarterly': 3,
+      'half_yearly': 6,
+      'yearly': 12,
+    }
+
+    if (monthsMap[planType]) {
+      // Add months with same-day logic
+      const months = monthsMap[planType]
+      const year = startDateObj.getFullYear()
+      const month = startDateObj.getMonth()
+      const day = startDateObj.getDate()
+      
+      const targetMonthIndex = (year * 12) + month + months
+      const targetYear = Math.floor(targetMonthIndex / 12)
+      const targetMonth = targetMonthIndex % 12
+      
+      const daysInTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate()
+      const targetDay = Math.min(day, daysInTargetMonth)
+      
+      return `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`
+    } else {
+      // Add days
+      const endDate = new Date(startDateObj)
+      endDate.setDate(endDate.getDate() + durationDays)
+      return endDate.toISOString().split('T')[0]
+    }
+  }
 
   useEffect(() => {
-    fetchData()
-    
-    // Check for pre-filled data from waiting list
-    const storedData = sessionStorage.getItem('newMemberData')
-    if (storedData) {
-      try {
-        const memberData = JSON.parse(storedData)
-        setFormData(prev => ({
-          ...prev,
-          ...memberData
-        }))
-        sessionStorage.removeItem('newMemberData')
-        openModal() // Open the modal automatically
-      } catch (error) {
-        console.error('Error parsing member data:', error)
-      }
+    if (selectedLibrary?.id) {
+      fetchMembers()
+      fetchStats()
+      fetchPlans()
+      fetchSeats()
     }
-  }, [])
+  }, [selectedLibrary])
 
-  const fetchData = async () => {
+  const fetchMembers = async () => {
     try {
       setLoading(true)
-      await Promise.all([
-        fetchMembers(),
-        fetchStats(),
-        fetchPlans(),
-        fetchSeats()
-      ])
+      const response = await membersAPI.getAll({
+        library_id: selectedLibrary.id,
+        page: 1,
+        limit: 1000 // Get all members for now
+      })
+      
+      if (response.success && response.data?.members) {
+        setMembers(response.data.members)
+      } else {
+        setMembers([])
+      }
     } catch (error) {
-      console.error('Error fetching data:', error)
+      console.error('Failed to fetch members:', error)
+      toast.error('Failed to load members')
+      setMembers([])
     } finally {
       setLoading(false)
     }
@@ -91,130 +146,135 @@ const Members = () => {
         setStats(response.data)
       }
     } catch (error) {
-      console.error('Error fetching stats:', error)
+      console.error('Failed to fetch stats:', error)
     }
   }
 
   const fetchPlans = async () => {
     try {
-      const response = await plansAPI.getAll({ library_id: selectedLibrary.id })
+      const response = await plansAPI.getAll({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] }))
+
+      let plansList = []
       if (response.success && response.data?.plans) {
-        setPlans(response.data.plans)
+        plansList = response.data.plans
       } else if (Array.isArray(response.data)) {
-        setPlans(response.data)
+        plansList = response.data
       } else if (Array.isArray(response)) {
-        setPlans(response)
+        plansList = response
+      }
+
+      setPlans(plansList)
+
+      if (!plansList.length) {
+        toast.error('No plans found. Please create a plan first.')
       }
     } catch (error) {
-      console.error('Error fetching plans:', error)
+      console.error('Failed to fetch plans:', error)
+      setPlans([])
+      toast.error('Unable to load plans')
     }
   }
+
+  // When plans load, default the selection to the first plan to avoid empty dropdowns
+  useEffect(() => {
+    if (plans.length > 0 && !formData.plan_id) {
+      const firstPlanId = String(plans[0].id)
+      setFormData((prev) => ({ ...prev, plan_id: firstPlanId }))
+      const today = startDate || new Date().toISOString().split('T')[0]
+      setExpiryDate(computeEndDate(plans[0], today))
+    }
+  }, [plans])
 
   const fetchSeats = async () => {
     try {
-      const response = await seatsAPI.getAll({ status: 'available', library_id: selectedLibrary.id })
+      const response = await seatsAPI.getAll({ library_id: selectedLibrary.id })
+      let seatsList = []
       if (response.success && response.data?.seats) {
-        setSeats(response.data.seats)
-      } else if (Array.isArray(response.data)) {
-        setSeats(response.data)
-      } else if (Array.isArray(response)) {
-        setSeats(response)
+        seatsList = response.data.seats
+      } else if (Array.isArray(response?.data)) {
+        seatsList = response.data
       }
+
+      // Sort seats by floor and numeric seat number for predictable ordering
+      seatsList.sort((a, b) => {
+        const fa = a.floor || ''
+        const fb = b.floor || ''
+        if (fa < fb) return -1
+        if (fa > fb) return 1
+        const getNum = (sn) => parseInt((sn || '').replace(/[^0-9]+/g, '')) || 0
+        return getNum(a.seat_number) - getNum(b.seat_number)
+      })
+
+      setSeats(seatsList)
     } catch (error) {
-      console.error('Error fetching seats:', error)
+      console.error('Failed to fetch seats:', error)
+      setSeats([])
+      toast.error('Unable to load seats')
     }
   }
 
-  const fetchMembers = async () => {
-    try {
-      const response = await membersAPI.getAll({ library_id: selectedLibrary.id })
-      console.log('Members API response:', response)
-      
-      // Handle different response structures
-      let membersList = []
-      if (response.success && response.data?.members) {
-        membersList = response.data.members
-      } else if (Array.isArray(response.data)) {
-        membersList = response.data
-      } else if (Array.isArray(response)) {
-        membersList = response
-      }
-      
-      setMembers(membersList)
-    } catch (error) {
-      console.error('Error fetching members:', error)
-      toast.error('Failed to load members')
-      setMembers([])
-    }
-  }
+  const handleSubmit = async (event) => {
+    event.preventDefault()
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    try {
-      if (currentMember) {
-        await membersAPI.update(currentMember.id, formData)
-        toast.success('Member updated successfully')
-      } else {
-        await membersAPI.create(formData)
-        toast.success('Member added successfully')
-      }
-      fetchMembers()
-      fetchStats()
-      closeModal()
-    } catch (error) {
-      toast.error('Failed to save member')
-    }
-  }
-
-  const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this member?')) return
-    
-    try {
-      await membersAPI.delete(id)
-      toast.success('Member deleted successfully')
-      fetchMembers()
-      fetchStats()
-    } catch (error) {
-      toast.error('Failed to delete member')
-    }
-  }
-
-  const handleBlockUnblock = async (member) => {
-    const newStatus = member.status === 'suspended' ? 'active' : 'suspended'
-    const action = newStatus === 'suspended' ? 'block' : 'unblock'
-    
-    if (!confirm(`Are you sure you want to ${action} this member?`)) return
-    
-    try {
-      await membersAPI.update(member.id, { status: newStatus })
-      toast.success(`Member ${action}ed successfully`)
-      fetchMembers()
-      fetchStats()
-    } catch (error) {
-      toast.error(`Failed to ${action} member`)
-    }
-  }
-
-  const openRenewModal = (member) => {
-    setRenewMember(member)
-    setRenewPlanId(member.plan_id || '')
-    setShowRenewModal(true)
-  }
-
-  const handleRenew = async () => {
-    if (!renewPlanId) {
-      toast.error('Please select a plan')
+    if (!selectedLibrary?.id) {
+      toast.error('Please select a library first')
       return
     }
 
+    const seatIdValue = formData.seat_id ? Number(formData.seat_id) : null
+    const trimmedPhone = formData.phone?.trim() || ''
+    const phoneDigits = trimmedPhone.replace(/\D/g, '')
+    if (phoneDigits.length < 10) {
+      toast.error('Please enter a valid phone number')
+      return
+    }
+
+    const payload = {
+      library_id: selectedLibrary.id,
+      full_name: formData.full_name?.trim(),
+      email: formData.email?.trim(),
+      phone: trimmedPhone,
+      plan_id: Number(formData.plan_id),
+      gender: formData.gender,
+      address: formData.address,
+      emergency_contact: formData.emergency_contact,
+      id_proof_type: formData.id_proof_type,
+      id_proof_number: formData.id_proof_number,
+      seat_id: seatIdValue,
+      photo: formData.photo
+    }
+
     try {
-      await membersAPI.renewMembership(renewMember.id, renewPlanId)
-      toast.success('Membership renewed successfully')
-      setShowRenewModal(false)
+      if (currentMember) {
+        const response = await membersAPI.update(currentMember.id, payload)
+        if (response.success) {
+          toast.success('Member updated successfully')
+        }
+      } else {
+        const response = await membersAPI.create(payload)
+        if (response.success) {
+          toast.success('Member added successfully')
+
+          const amount = parseFloat(paidAmount)
+          if (!Number.isNaN(amount) && amount > 0) {
+            await paymentsAPI.create({
+              member_id: response.data.member_id,
+              amount,
+              payment_method: paymentMode === 'online' ? 'upi' : 'cash',
+              payment_type: 'enrollment',
+              payment_date: format(new Date(), 'yyyy-MM-dd'),
+              notes: 'Initial enrollment payment'
+            })
+          }
+        }
+      }
+
+      closeModal()
       fetchMembers()
       fetchStats()
     } catch (error) {
-      toast.error('Failed to renew membership')
+      console.error('Member submit error:', error)
+      toast.error((error.response?.data?.message) || 'Something went wrong')
     }
   }
 
@@ -229,6 +289,71 @@ const Members = () => {
     setShowPaymentModal(true)
   }
 
+  const openRenewModal = (member) => {
+    setRenewMember(member)
+    setRenewPlanId(member.plan_id || '')
+    setRenewAmount(member.plan_price != null ? String(member.plan_price) : '')
+    setRenewPaymentMode('cash')
+    setShowRenewModal(true)
+  }
+
+  const handleRenew = async () => {
+    if (!renewMember) return toast.error('No member selected')
+    if (!renewPlanId) return toast.error('Please select a plan')
+
+    try {
+      const amount = Number(renewAmount) > 0 ? Number(renewAmount) : undefined
+      const response = await membersAPI.renewMembership(renewMember.id, renewPlanId, {
+        payment_mode: renewPaymentMode === 'cash' ? 'cash' : 'online',
+        payment_method: renewPaymentMode === 'cash' ? 'cash' : 'upi',
+        amount,
+        payment_type: 'renewal',
+        payment_date: format(new Date(), 'yyyy-MM-dd'),
+        notes: 'Membership renewal'
+      })
+
+      if (response.success) {
+        toast.success('Membership renewed successfully')
+        setShowRenewModal(false)
+        setRenewMember(null)
+        setRenewPlanId('')
+        setRenewAmount('')
+        fetchMembers()
+        fetchStats()
+      } else {
+        toast.error(response.message || 'Failed to renew membership')
+      }
+    } catch (error) {
+      console.error('Renew error:', error)
+      toast.error(error.response?.data?.message || 'Failed to renew membership')
+    }
+  }
+
+  const handleBlockUnblock = async (member) => {
+    if (!member) return
+
+    const isBlocking = member.status !== 'suspended'
+    if (isBlocking) {
+      const confirmBlock = window.confirm(`Are you sure you want to block ${member.full_name || member.name}?`)
+      if (!confirmBlock) return
+    }
+
+    try {
+      const newStatus = isBlocking ? 'suspended' : 'active'
+      const response = await membersAPI.update(member.id, { status: newStatus })
+      if (response.success) {
+        toast.success(`${isBlocking ? 'Blocked' : 'Unblocked'} member successfully`)
+        fetchMembers()
+        fetchStats()
+      } else {
+        toast.error(response.message || `Failed to ${isBlocking ? 'block' : 'unblock'} member`)
+      }
+    } catch (error) {
+      console.error('Block/Unblock error:', error)
+      toast.error(error.response?.data?.message || `Failed to ${isBlocking ? 'block' : 'unblock'} member`)
+    }
+  }
+
   const handleAddPayment = async () => {
     if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
       toast.error('Please enter a valid amount')
@@ -240,7 +365,8 @@ const Members = () => {
         member_id: paymentMember.id,
         amount: parseFloat(paymentAmount),
         payment_date: format(new Date(), 'yyyy-MM-dd'),
-        payment_method: 'cash',
+        payment_method: paymentMode === 'online' ? 'upi' : 'cash',
+        payment_type: 'subscription',
         notes: 'Quick payment'
       })
       toast.success('Payment added successfully')
@@ -248,6 +374,120 @@ const Members = () => {
       fetchMembers()
     } catch (error) {
       toast.error('Failed to add payment')
+    }
+  }
+
+  const buildPaymentShareMessage = ({ member, amount }) => {
+    const name = member.full_name || member.name || 'Member'
+    const code = member.member_code || 'N/A'
+    const endDate = member.plan_end_date ? format(new Date(member.plan_end_date), 'dd MMM, yyyy') : ''
+    const libraryName = selectedLibrary?.library_name || 'Library'
+    const line1 = `Hello ${name},`
+    const line2 = `Your payment due: ₹${Number(amount || 0).toLocaleString('en-IN')}`
+    const line3 = `Member ID: ${code}${endDate ? ` | Valid till: ${endDate}` : ''}`
+    const line4 = `Library: ${libraryName}`
+    return [line1, line2, line3, line4, '', 'QR attached for payment.'].join('\n')
+  }
+
+  const buildTemplateMessage = (templateKey, member) => {
+    const name = member.full_name || member.name || 'Member'
+    const code = member.member_code || 'N/A'
+    const libraryName = selectedLibrary?.library_name || 'Library'
+    const endDate = member.plan_end_date ? format(new Date(member.plan_end_date), 'dd MMM, yyyy') : ''
+    const amount = member.plan_price || 0
+
+    switch (templateKey) {
+      case 'membership':
+        return `Hello ${name},\nWelcome to ${libraryName}! Your Member ID is ${code}. Plan valid till ${endDate || 'N/A'}.`
+      case 'due':
+        return `Hello ${name},\nThis is a reminder that your payment of ₹${Number(amount).toLocaleString('en-IN')} is due. Member ID: ${code}. Plan valid till ${endDate || 'N/A'}.\nLibrary: ${libraryName}`
+      case 'renewal':
+        return `Hello ${name},\nYour membership is expiring on ${endDate || 'N/A'}. Please renew to continue access. Member ID: ${code}. Library: ${libraryName}`
+      case 'birthday':
+        return `Happy Birthday ${name}! 🎉\nWishing you a wonderful year ahead. - ${libraryName}`
+      case 'offers':
+        return `Hello ${name},\nWe have a new offer for members at ${libraryName}. Reply to know more!`
+      case 'holiday':
+        return `Hello ${name},\n${libraryName} will remain closed for the upcoming holiday. Please plan your visits accordingly.`
+      default:
+        return buildPaymentShareMessage({ member, amount })
+    }
+  }
+
+  const generateQrFile = async (text, filename = 'payment-qr.png') => {
+    const dataUrl = await QRCode.toDataURL(text, { width: 512, margin: 1 })
+    const res = await fetch(dataUrl)
+    const blob = await res.blob()
+    return new File([blob], filename, { type: blob.type || 'image/png' })
+  }
+
+  const openWhatsAppChat = (member) => {
+    const phone = String(member?.phone || '').replace(/\D/g, '')
+    if (!phone) {
+      toast.error('No phone number available')
+      return
+    }
+    const url = `https://wa.me/91${phone}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  const openWhatsAppReminderModal = (member) => {
+    setWhatsAppMember(member)
+    setSelectedTemplate('')
+    setCustomMessage('')
+    setShowWhatsAppModal(true)
+  }
+
+  const handleTemplateSelect = (value) => {
+    setSelectedTemplate(value)
+    if (value && whatsAppMember) {
+      setCustomMessage(buildTemplateMessage(value, whatsAppMember))
+    }
+  }
+
+  useEffect(() => {
+    const onDocClick = (e) => {
+      if (!templateRef.current) return
+      if (!templateRef.current.contains(e.target)) {
+        setShowTemplateList(false)
+      }
+    }
+    if (showTemplateList) document.addEventListener('click', onDocClick)
+    return () => document.removeEventListener('click', onDocClick)
+  }, [showTemplateList])
+
+  const sendWhatsAppReminder = async () => {
+    if (!whatsAppMember) {
+      toast.error('No member selected')
+      return
+    }
+    try {
+      const member = whatsAppMember
+      const amount = member?.plan_price || 0
+      const message = (customMessage || '').trim() || buildPaymentShareMessage({ member, amount })
+
+      // QR encodes payment details (scannable content); if you later add UPI/VPA settings,
+      // you can switch this text to a real UPI deep link.
+      const qrText = `FeeTrack Payment\nLibrary: ${selectedLibrary?.library_name || ''}\nMember: ${member.full_name || member.name || ''}\nMember ID: ${member.member_code || ''}\nAmount: ${amount}`
+      const qrFile = await generateQrFile(qrText, `payment-qr-${member.member_code || member.id}.png`)
+
+      if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [qrFile] }))) {
+        await navigator.share({
+          text: message,
+          files: [qrFile]
+        })
+        return
+      }
+
+      // Fallback: open WhatsApp with prefilled editable text
+      const phone = String(member.phone || '').replace(/\D/g, '')
+      const url = `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`
+      window.open(url, '_blank', 'noopener,noreferrer')
+      setShowWhatsAppModal(false)
+      setWhatsAppMember(null)
+    } catch (e) {
+      console.error('WhatsApp share failed:', e)
+      toast.error('Unable to open WhatsApp share')
     }
   }
 
@@ -307,6 +547,12 @@ const Members = () => {
         photo: member.photo || ''
       })
       setPhotoPreview(member.photo || null)
+      setPlanAmount(member.plan_price != null ? String(member.plan_price) : '')
+      const sd = member.plan_start_date ? format(new Date(member.plan_start_date), 'yyyy-MM-dd') : new Date().toISOString().split('T')[0]
+      setStartDate(sd)
+      setExpiryDate(member.plan_end_date ? format(new Date(member.plan_end_date), 'yyyy-MM-dd') : computeEndDate(plans.find(p => String(p.id) === String(member.plan_id)), sd))
+      setPaymentMode('online')
+      setPaidAmount('')
     } else {
       setCurrentMember(null)
       setFormData({
@@ -323,13 +569,24 @@ const Members = () => {
         photo: ''
       })
       setPhotoPreview(null)
+      setPlanAmount('')
+      const today = new Date().toISOString().split('T')[0]
+      setStartDate(today)
+      const defaultPlan = plans.find(p => String(p.id) === '1') || plans[0]
+      setExpiryDate(computeEndDate(defaultPlan || {}, today))
+      setPaymentMode('online')
+      setPaidAmount('')
     }
+    // Refresh seats when opening modal to ensure seating options are up to date
+    if (selectedLibrary?.id) fetchSeats()
     setShowModal(true)
   }
 
   const closeModal = () => {
     setShowModal(false)
     setCurrentMember(null)
+    setPaymentMode('online')
+    setPaidAmount('')
   }
 
   const filteredMembers = Array.isArray(members) ? members.filter(member => {
@@ -340,12 +597,20 @@ const Members = () => {
     
     // Status filter
     const matchesStatus = statusFilter === 'all' || member.status === statusFilter
+
+    // Membership status filter (active/expired/expiring) based on plan_end_date
+    const ms = member.membership_status || (member.plan_end_date ? (differenceInDays(new Date(member.plan_end_date), new Date()) < 0 ? 'expired' : (differenceInDays(new Date(member.plan_end_date), new Date()) <= 7 ? 'expiring' : 'active')) : 'active')
+    const matchesMembership = membershipFilter === 'all' || ms === membershipFilter
     
     // Plan filter
     const matchesPlan = planFilter === 'all' || member.plan_id === parseInt(planFilter)
     
-    return matchesSearch && matchesStatus && matchesPlan
+    return matchesSearch && matchesStatus && matchesMembership && matchesPlan
   }) : []
+
+  const blockedMembers = Array.isArray(members)
+    ? members.filter(m => m.status === 'suspended')
+    : []
 
   return (
     <div className="space-y-6">
@@ -367,7 +632,11 @@ const Members = () => {
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="stats-card stats-card-primary">
+          <button
+            type="button"
+            onClick={() => setMembershipFilter('all')}
+            className="stats-card stats-card-primary text-left"
+          >
             <div className="stats-card-header">
               <div className="stats-card-content">
                 <p className="stats-card-label">Total Members</p>
@@ -379,9 +648,13 @@ const Members = () => {
                 <Users className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
-          </div>
+          </button>
 
-          <div className="stats-card stats-card-success">
+          <button
+            type="button"
+            onClick={() => setMembershipFilter('active')}
+            className="stats-card stats-card-success text-left"
+          >
             <div className="stats-card-header">
               <div className="stats-card-content">
                 <p className="stats-card-label">Active Members</p>
@@ -393,9 +666,13 @@ const Members = () => {
                 <UserCheck className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
-          </div>
+          </button>
 
-          <div className="stats-card stats-card-danger">
+          <button
+            type="button"
+            onClick={() => setMembershipFilter('expired')}
+            className="stats-card stats-card-danger text-left"
+          >
             <div className="stats-card-header">
               <div className="stats-card-content">
                 <p className="stats-card-label">Expired</p>
@@ -407,9 +684,13 @@ const Members = () => {
                 <UserX className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
-          </div>
+          </button>
 
-          <div className="stats-card stats-card-warning">
+          <button
+            type="button"
+            onClick={() => setMembershipFilter('expiring')}
+            className="stats-card stats-card-warning text-left"
+          >
             <div className="stats-card-header">
               <div className="stats-card-content">
                 <p className="stats-card-label">Expiring Soon</p>
@@ -421,67 +702,122 @@ const Members = () => {
                 <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
-          </div>
+          </button>
         </div>
       )}
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
-        <div className="flex flex-col gap-4">
-          {/* Search Bar */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search members by name, email, or phone..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input pl-10 w-full"
-            />
-          </div>
-          
-          {/* Filter Options */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="input"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="suspended">Suspended</option>
-            </select>
-
-            {/* Plan Filter */}
-            <select
-              value={planFilter}
-              onChange={(e) => setPlanFilter(e.target.value)}
-              className="input"
-            >
-              <option value="all">All Plans</option>
-              {plans.map(plan => (
-                <option key={plan.id} value={plan.id}>{plan.plan_name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Clear Filters Button */}
-          {(statusFilter !== 'all' || planFilter !== 'all') && (
-            <button
-              onClick={() => {
-                setStatusFilter('all')
-                setPlanFilter('all')
-              }}
-              className="text-sm text-primary hover:text-primary-dark flex items-center gap-1 self-start"
-            >
-              <X className="w-4 h-4" />
-              Clear Filters
-            </button>
-          )}
+      <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-4 sm:p-6 space-y-4">
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by name, email, or phone"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="input pl-10 w-full"
+          />
         </div>
+
+        {/* Status Pills */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: 'all', label: 'All' },
+            { key: 'active', label: 'Active' },
+            { key: 'expiring', label: 'Expiring' },
+            { key: 'expired', label: 'Expired' },
+            { key: 'suspended', label: 'Blocked' }
+          ].map(item => (
+            <button
+              key={item.key}
+              onClick={() => {
+                if (item.key === 'suspended') {
+                  setStatusFilter('suspended')
+                  setMembershipFilter('all')
+                } else {
+                  setStatusFilter('all')
+                  setMembershipFilter(item.key)
+                }
+              }}
+              className={`px-3 py-2 rounded-full text-sm font-semibold border transition ${
+                (item.key === 'suspended' ? statusFilter === 'suspended' : membershipFilter === item.key || (item.key === 'all' && membershipFilter === 'all' && statusFilter === 'all'))
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-gray-700 border-gray-300'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Plan Filter */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="input"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="suspended">Suspended</option>
+          </select>
+
+          <select
+            value={planFilter}
+            onChange={(e) => setPlanFilter(e.target.value)}
+            className="input"
+          >
+            <option value="all">All Plans</option>
+            {plans.map(plan => (
+              <option key={plan.id} value={plan.id}>{plan.plan_name}</option>
+            ))}
+          </select>
+        </div>
+
+        {(statusFilter !== 'all' || planFilter !== 'all' || membershipFilter !== 'all') && (
+          <button
+            onClick={() => {
+              setStatusFilter('all')
+              setPlanFilter('all')
+              setMembershipFilter('all')
+            }}
+            className="text-sm text-primary hover:text-primary-dark flex items-center gap-1 self-start"
+          >
+            <X className="w-4 h-4" />
+            Clear Filters
+          </button>
+        )}
       </div>
+
+      {/* Blocked Members Section */}
+      {blockedMembers.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900">Blocked Members</h2>
+            <span className="text-sm text-gray-600">{blockedMembers.length}</span>
+          </div>
+          <div className="space-y-2">
+            {blockedMembers.map((m) => (
+              <div key={m.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                <div className="min-w-0">
+                  <div className="font-semibold text-gray-900 truncate">{m.full_name || m.name}</div>
+                  <a href={`tel:${m.phone}`} className="text-sm text-gray-600 hover:underline">{m.phone}</a>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleBlockUnblock(m)}
+                    className="px-3 py-2 text-sm font-semibold btn-success rounded-lg"
+                  >
+                    Unblock
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Members List - Enhanced Card View */}
       <div className="space-y-4">
@@ -520,11 +856,11 @@ const Members = () => {
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             e.target.style.display = 'none'
-                            e.target.parentElement.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">${(member.full_name || member.name || 'U').charAt(0).toUpperCase()}</div>`
+                            e.target.parentElement.innerHTML = `<div class="w-full h-full bg-gradient-primary flex items-center justify-center text-white text-xl font-bold">${(member.full_name || member.name || 'U').charAt(0).toUpperCase()}</div>`
                           }}
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">
+                        <div className="w-full h-full bg-gradient-primary flex items-center justify-center text-white text-xl font-bold">
                           {(member.full_name || member.name || 'U').charAt(0).toUpperCase()}
                         </div>
                       )}
@@ -572,19 +908,19 @@ const Members = () => {
                 <div className="grid grid-cols-1 gap-2 mb-4 text-sm">
                   <div className="flex items-center gap-2 text-gray-600">
                     <Phone className="w-4 h-4" />
-                    <span>{member.phone}</span>
+                    <a href={`tel:${member.phone}`} className="hover:underline">{member.phone}</a>
                   </div>
                 </div>
 
                 {/* Plan Details */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4 border-t border-b border-gray-200">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 py-4 border-t border-b border-gray-200">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Plan</p>
                     <p className="font-semibold text-gray-900 truncate">{member.plan_name || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Type</p>
-                    <p className="font-semibold text-gray-900">Fullday</p>
+                    <p className="font-semibold text-gray-900">{member.plan_type || 'Fullday'}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Join</p>
@@ -601,7 +937,7 @@ const Members = () => {
                 </div>
 
                 {/* Payment Details */}
-                <div className="grid grid-cols-3 gap-4 py-4 border-b border-gray-200">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-4 border-b border-gray-200">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Amount</p>
                     <p className="font-bold text-gray-900 flex items-center">
@@ -626,61 +962,66 @@ const Members = () => {
                 </div>
 
                 {/* Action Buttons - Horizontal Scroll */}
-                <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide">
-                  <a
-                    href={`https://wa.me/91${member.phone}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 rounded-lg hover:from-green-600 hover:to-green-700 transition-all shadow-sm"
+                <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide [&>button]:min-w-[120px] [&>a]:min-w-[120px]">
+                  <button
+                    onClick={() => openWhatsAppChat(member)}
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-success rounded-lg transition-all shadow-sm"
                   >
-                    <Phone className="w-4 h-4" />
-                    WhatsApp
-                  </a>
+                    <MessageSquare className="w-4 h-4" />
+                    WA Chat
+                  </button>
+                  <button
+                    onClick={() => openWhatsAppReminderModal(member)}
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-success rounded-lg transition-all shadow-sm"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    Send Reminder
+                  </button>
                   <a
                     href={`sms:${member.phone}`}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-cyan-500 to-cyan-600 rounded-lg hover:from-cyan-600 hover:to-cyan-700 transition-all shadow-sm"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-info rounded-lg transition-all shadow-sm"
                   >
                     <MessageSquare className="w-4 h-4" />
                     Message
                   </a>
                   <button
                     onClick={() => openProfileModal(member)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-primary rounded-lg transition-all shadow-sm"
                   >
                     <User className="w-4 h-4" />
                     Profile
                   </button>
                   <button
                     onClick={() => generateIdCard(member)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all shadow-sm"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-accent rounded-lg transition-all shadow-sm"
                   >
                     <IdCard className="w-4 h-4" />
                     ID-Card
                   </button>
                   <button
                     onClick={() => openInvoice(member)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg hover:from-teal-600 hover:to-teal-700 transition-all shadow-sm"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-primary rounded-lg transition-all shadow-sm"
                   >
                     <Printer className="w-4 h-4" />
                     Invoice
                   </button>
                   <button
                     onClick={() => openModal(member)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 rounded-lg hover:from-green-600 hover:to-green-700 transition-all shadow-sm"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-success rounded-lg transition-all shadow-sm"
                   >
                     <Edit className="w-4 h-4" />
                     Edit
                   </button>
                   <button
                     onClick={() => openPaymentModal(member)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition-all shadow-sm"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-primary rounded-lg transition-all shadow-sm"
                   >
                     <CreditCard className="w-4 h-4" />
                     Add Pay
                   </button>
                   <button
                     onClick={() => openRenewModal(member)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all shadow-sm"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-warning rounded-lg transition-all shadow-sm"
                   >
                     <RefreshCw className="w-4 h-4" />
                     Renew
@@ -689,8 +1030,8 @@ const Members = () => {
                     onClick={() => handleBlockUnblock(member)}
                     className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white rounded-lg transition-all shadow-sm ${
                       member.status === 'suspended'
-                        ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
-                        : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
+                        ? 'bg-success text-white hover:bg-success-dark'
+                        : 'bg-danger text-white hover:bg-danger-dark'
                     }`}
                   >
                     {member.status === 'suspended' ? (
@@ -707,7 +1048,7 @@ const Members = () => {
                   </button>
                   <button
                     onClick={() => openDeleteModal(member)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-gray-700 to-gray-800 rounded-lg hover:from-gray-800 hover:to-gray-900 transition-all shadow-sm"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-danger rounded-lg transition-all shadow-sm"
                   >
                     <Trash2 className="w-4 h-4" />
                     Delete
@@ -893,7 +1234,7 @@ const Members = () => {
                 <label className="block text-sm font-semibold text-gray-700 mb-3">Allot Seat (Optional)</label>
                 <div className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200">
                   <p className="text-xs text-gray-600 mb-3">Select an available seat by clicking on it</p>
-                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-48 overflow-y-auto">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-48 overflow-y-auto">
                     <button
                       type="button"
                       onClick={() => setFormData({...formData, seat_id: ''})}
@@ -905,21 +1246,38 @@ const Members = () => {
                     >
                       <p className="text-xs font-bold">No Seat</p>
                     </button>
-                    {seats.filter(seat => !seat.member_id || seat.id === formData.seat_id).map(seat => (
-                      <button
-                        type="button"
-                        key={seat.id}
-                        onClick={() => setFormData({...formData, seat_id: seat.id})}
-                        className={`p-3 rounded-lg border-2 transition-all transform hover:scale-105 ${
-                          formData.seat_id === seat.id
-                            ? 'bg-green-500 border-green-600 text-white shadow-lg'
-                            : 'bg-green-50 border-green-300 text-gray-700 hover:bg-green-100 hover:border-green-400'
-                        }`}
-                      >
-                        <p className="text-sm font-bold">{seat.seat_number}</p>
-                        {seat.floor && <p className="text-xs opacity-75">F{seat.floor}</p>}
-                      </button>
-                    ))}
+
+                    {seats.map(seat => {
+                      const isSelected = formData.seat_id === seat.id
+                      const isOccupiedByOther = seat.member_id && seat.id !== formData.seat_id
+                      const baseClasses = isOccupiedByOther
+                        ? 'bg-red-50 border-red-300 text-red-700 cursor-not-allowed'
+                        : 'bg-green-50 border-green-300 text-gray-700 hover:bg-green-100 hover:border-green-400'
+
+                      return (
+                        <button
+                          type="button"
+                          key={seat.id}
+                          disabled={isOccupiedByOther}
+                          onClick={() => !isOccupiedByOther && setFormData({...formData, seat_id: seat.id})}
+                          className={`p-3 rounded-lg border-2 transition-all transform hover:scale-105 ${
+                            isSelected
+                              ? 'bg-green-500 border-green-600 text-white shadow-lg'
+                              : baseClasses
+                          } ${isOccupiedByOther ? 'opacity-70' : ''}`}
+                        >
+                          <p className="text-sm font-bold">{seat.seat_number}</p>
+                          {seat.floor && <p className="text-xs opacity-75">F{seat.floor}</p>}
+                          <p className="text-[11px] mt-1 font-semibold">
+                            {isSelected
+                              ? 'Selected'
+                              : isOccupiedByOther
+                                ? 'Occupied'
+                                : 'Available'}
+                          </p>
+                        </button>
+                      )
+                    })}
                   </div>
                   {formData.seat_id && (
                     <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded text-center">
@@ -967,7 +1325,11 @@ const Members = () => {
               <label className="block text-sm font-semibold text-gray-700 mb-2">Select New Plan *</label>
               <select
                 value={renewPlanId}
-                onChange={(e) => setRenewPlanId(e.target.value)}
+                onChange={(e) => {
+                  setRenewPlanId(e.target.value)
+                  const p = plans.find(pl => String(pl.id) === String(e.target.value))
+                  if (p?.price != null) setRenewAmount(String(p.price))
+                }}
                 className="input w-full"
                 required
               >
@@ -978,6 +1340,34 @@ const Members = () => {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Mode</label>
+              <select
+                value={renewPaymentMode}
+                onChange={(e) => setRenewPaymentMode(e.target.value)}
+                className="input w-full"
+              >
+                <option value="cash">Cash</option>
+                <option value="upi">Online</option>
+              </select>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Amount</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={renewAmount}
+                  onChange={(e) => setRenewAmount(e.target.value)}
+                  className="input w-full pl-8"
+                  placeholder="Enter amount"
+                  min="0"
+                />
+              </div>
             </div>
 
             <div className="flex gap-3">
@@ -1012,7 +1402,7 @@ const Members = () => {
                 <X className="w-5 h-5 text-gray-600" />
               </button>
               
-              <div className="bg-gradient-to-br from-primary to-blue-600 p-6 pb-20 rounded-t-xl">
+              <div className="bg-gradient-primary p-6 pb-20 rounded-t-xl">
                 <div className="flex justify-center">
                   <div className="w-24 h-24 rounded-full overflow-hidden bg-white shadow-lg border-4 border-white">
                     {profileMember.photo ? (
@@ -1022,11 +1412,11 @@ const Members = () => {
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           e.target.style.display = 'none'
-                          e.target.parentElement.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold">${(profileMember.full_name || profileMember.name || 'U').charAt(0).toUpperCase()}</div>`
+                          e.target.parentElement.innerHTML = `<div class="w-full h-full bg-gradient-primary flex items-center justify-center text-white text-3xl font-bold">${(profileMember.full_name || profileMember.name || 'U').charAt(0).toUpperCase()}</div>`
                         }}
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold">
+                      <div className="w-full h-full bg-gradient-primary flex items-center justify-center text-white text-3xl font-bold">
                         {(profileMember.full_name || profileMember.name || 'U').charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -1056,7 +1446,7 @@ const Members = () => {
                 {/* Contact Info */}
                 <div className="flex items-center gap-2 text-gray-600 mb-3 pb-4 border-b">
                   <Phone className="w-4 h-4" />
-                  <span className="text-sm font-medium">{profileMember.phone}</span>
+                  <a href={`tel:${profileMember.phone}`} className="text-sm font-medium hover:underline">{profileMember.phone}</a>
                 </div>
 
                 {/* Plan & Type */}
@@ -1104,22 +1494,29 @@ const Members = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-3">
-                  <a
-                    href={`https://wa.me/91${profileMember.phone}?text=Hello ${profileMember.full_name || profileMember.name}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-colors"
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => openWhatsAppChat(profileMember)}
+                    className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-colors"
                   >
                     <MessageSquare className="w-5 h-5" />
-                    WhatsApp
-                  </a>
+                    WA Chat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openWhatsAppReminderModal(profileMember)}
+                    className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-semibold transition-colors"
+                  >
+                    <MessageSquare className="w-5 h-5" />
+                    Send Reminder
+                  </button>
                   <button
                     onClick={() => {
                       setShowProfileModal(false)
                       openPaymentModal(profileMember)
                     }}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+                    className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-3 bg-primary hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
                   >
                     <CreditCard className="w-5 h-5" />
                     Add Pay
@@ -1215,8 +1612,94 @@ const Members = () => {
         <InvoiceGenerator
           member={invoiceMember}
           payment={invoicePayment}
+          library={selectedLibrary}
           onClose={closeInvoice}
         />
+      )}
+
+      {/* WhatsApp Reminder Modal */}
+      {showWhatsAppModal && whatsAppMember && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+            <div className="bg-gradient-danger px-6 py-5 flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white bg-white flex items-center justify-center">
+                <span className="text-lg font-bold text-red-600">{(whatsAppMember.full_name || whatsAppMember.name || 'U').charAt(0).toUpperCase()}</span>
+              </div>
+              <div className="flex-1">
+                <p className="text-white text-xl font-semibold">Send WhatsApp</p>
+                <p className="text-white text-sm opacity-90">{whatsAppMember.full_name || whatsAppMember.name}</p>
+              </div>
+              <button
+                onClick={() => { setShowWhatsAppModal(false); setWhatsAppMember(null); }}
+                className="text-white/80 hover:text-white"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm font-semibold text-gray-800">
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Name</p>
+                  <p>{whatsAppMember.full_name || whatsAppMember.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Mobile</p>
+                  <p>{whatsAppMember.phone || 'N/A'}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2 relative" ref={templateRef}>
+                <label className="text-sm font-semibold text-gray-700">Template</label>
+                <button
+                  type="button"
+                  onClick={() => setShowTemplateList(!showTemplateList)}
+                  className="input flex items-center justify-between"
+                  aria-haspopup="listbox"
+                  aria-expanded={showTemplateList}
+                >
+                  <span className={`${selectedTemplate ? 'text-gray-900' : 'text-gray-400'}`}>{selectedTemplate ? templates.find(t => t.key === selectedTemplate)?.label : 'Select template'}</span>
+                  <svg className="w-5 h-5 text-gray-400" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M6 8L10 12L14 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+
+                {showTemplateList && (
+                  <div className="absolute left-0 right-0 mt-2 bg-white rounded-xl shadow-lg max-h-64 overflow-y-auto border border-gray-100 z-50">
+                    {templates.map(t => (
+                      <button
+                        key={t.key}
+                        onClick={() => { handleTemplateSelect(t.key); setShowTemplateList(false); }}
+                        className="w-full text-left px-4 py-4 hover:bg-gray-50 transition-colors text-lg font-medium"
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">Message</label>
+                <textarea
+                  rows="5"
+                  value={customMessage}
+                  onChange={(e) => setCustomMessage(e.target.value)}
+                  className="input"
+                  placeholder="Select a template to auto-fill message"
+                />
+              </div>
+
+              <button
+                onClick={sendWhatsAppReminder}
+                className="w-full py-3 rounded-lg bg-green-600 text-white font-semibold text-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <MessageSquare className="w-5 h-5" />
+                Send WhatsApp
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete Confirmation Modal */}
@@ -1242,18 +1725,12 @@ const Members = () => {
                   <p className="text-sm text-gray-500">{memberToDelete.email}</p>
                 </div>
               </div>
-              <p className="text-gray-600">
-                Are you sure you want to permanently delete this member? This action cannot be undone and will also delete:
+              <p className="text-gray-700 leading-relaxed">
+                Deleting removes member access and seat allocation but keeps payment records intact for reports and audits.
               </p>
-              <ul className="mt-3 space-y-1 text-sm text-gray-600 list-disc list-inside">
-                <li>All payment records</li>
-                <li>Attendance history</li>
-                <li>Member profile and documents</li>
-                <li>Seat allocation (if any)</li>
-              </ul>
-              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-800">
-                  <strong>Warning:</strong> This is a permanent action and cannot be reversed.
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-900">
+                  <strong>Note:</strong> Attendance and profile data will be removed. Payments stay saved.
                 </p>
               </div>
             </div>

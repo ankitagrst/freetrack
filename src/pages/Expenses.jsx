@@ -257,12 +257,12 @@ const Expenses = () => {
                     </div>
                     
                     {/* Amount Section */}
-                    <div className="bg-gradient-to-r from-red-50 to-rose-50 rounded-lg px-4 py-3 border border-red-100">
+                    <div className="bg-danger-light rounded-lg px-4 py-3 border border-danger-light">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-xs font-medium text-red-700 uppercase tracking-wide">Expense Amount</span>
+                        <span className="text-xs font-medium text-danger-dark uppercase tracking-wide">Expense Amount</span>
                       </div>
                       <div className="flex items-baseline gap-1 mt-1">
-                        <span className="text-2xl font-bold text-red-700">{formatCurrency(exp.amount)}</span>
+                        <span className="text-2xl font-bold text-danger-dark">{formatCurrency(exp.amount)}</span>
                       </div>
                     </div>
                   </div>
@@ -371,10 +371,10 @@ const Expenses = () => {
                 <X className="w-5 h-5 text-gray-600" />
               </button>
               
-              <div className="bg-gradient-to-br from-red-500 to-rose-600 p-6 pb-16 rounded-t-xl">
+              <div className="bg-gradient-danger p-6 pb-16 rounded-t-xl">
                 <div className="flex justify-center">
                   <div className="w-20 h-20 rounded-full bg-white shadow-lg flex items-center justify-center">
-                    <TrendingDown className="w-10 h-10 text-red-600" />
+                    <TrendingDown className="w-10 h-10 text-danger" />
                   </div>
                 </div>
               </div>
@@ -394,7 +394,7 @@ const Expenses = () => {
                 {/* Amount */}
                 <div className="mb-4 pb-4 border-b text-center">
                   <p className="text-xs text-gray-500 mb-1">Amount</p>
-                  <p className="text-4xl font-bold text-red-600">{formatCurrency(detailExpense.amount || 0)}</p>
+                  <p className="text-4xl font-bold text-danger">{formatCurrency(detailExpense.amount || 0)}</p>
                 </div>
 
                 {/* Expense Details Grid */}

@@ -51,6 +51,15 @@ const Seats = () => {
         membersList = membersRes.data
       }
       
+      // Sort seats by floor then numeric suffix of seat_number for predictable visual order
+      seatsList.sort((a, b) => {
+        const fa = a.floor || ''
+        const fb = b.floor || ''
+        if (fa < fb) return -1
+        if (fa > fb) return 1
+        const getNum = (sn) => parseInt((sn || '').replace(/[^0-9]+/g, '')) || 0
+        return getNum(a.seat_number) - getNum(b.seat_number)
+      })
       setSeats(seatsList)
       setMembers(membersList)
       
@@ -133,6 +142,8 @@ const Seats = () => {
     setModalType('allocate')
     setCurrentSeat(seat)
     setFormData({ seat_number: seat.seat_number, floor: '', section: '', member_id: '' })
+    // Refresh members before allocating, to ensure member list is current
+    if (selectedLibrary?.id) fetchData()
     setShowModal(true)
   }
 
