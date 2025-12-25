@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { adminAPI, subscriptionPlansAPI } from '../services/api'
-import { Users, Building, AlertTriangle, Clock, DollarSign, TrendingUp, Plus, Search, Edit, Trash2, X, Package } from 'lucide-react'
+import { Users, Building, AlertTriangle, Clock, IndianRupee, TrendingUp, Plus, Search, Edit, Trash2, X, Package, Mail, Phone, Calendar } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState('libraries') // 'libraries' or 'plans'
+  const [activeTab, setActiveTab] = useState('organizations') // 'organizations' or 'plans'
   const [stats, setStats] = useState(null)
-  const [libraries, setLibraries] = useState([])
-  const [expiringLibraries, setExpiringLibraries] = useState({ expired: [], expiring_soon: [] })
+  const [organizations, setOrganizations] = useState([])
+  const [expiringOrganizations, setExpiringOrganizations] = useState({ expired: [], expiring_soon: [] })
   const [subscriptionPlans, setSubscriptionPlans] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -16,7 +16,7 @@ const AdminDashboard = () => {
   const [planFilter, setPlanFilter] = useState('all')
   const [showModal, setShowModal] = useState(false)
   const [modalType, setModalType] = useState('') // 'subscription', 'status', 'create', 'plan'
-  const [selectedLibrary, setSelectedLibrary] = useState(null)
+  const [selectedOrganization, setSelectedOrganization] = useState(null)
   const [selectedPlan, setSelectedPlan] = useState(null)
   const [formData, setFormData] = useState({
     subscription_plan_id: '',
@@ -40,19 +40,19 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [statsRes, librariesRes, plansRes, expiringRes] = await Promise.all([
+      const [statsRes, organizationsRes, plansRes, expiringRes] = await Promise.all([
         adminAPI.getStats().catch(() => ({ success: false, data: null })),
-        adminAPI.getLibraries().catch(() => ({ success: false, data: [] })),
+        adminAPI.getOrganizations().catch(() => ({ success: false, data: [] })),
         subscriptionPlansAPI.getAll().catch(() => ({ success: false, data: [] })),
-        adminAPI.getExpiringLibraries().catch(() => ({ success: false, data: { expired: [], expiring_soon: [] } }))
+        adminAPI.getExpiringOrganizations().catch(() => ({ success: false, data: { expired: [], expiring_soon: [] } }))
       ])
 
       if (statsRes.success && statsRes.data) {
         setStats(statsRes.data)
       }
 
-      if (librariesRes.success && librariesRes.data?.libraries) {
-        setLibraries(librariesRes.data.libraries)
+      if (organizationsRes.success && organizationsRes.data?.organizations) {
+        setOrganizations(organizationsRes.data.organizations)
       }
 
       // Handle subscription plans response
@@ -76,7 +76,7 @@ const AdminDashboard = () => {
       }
 
       if (expiringRes.success && expiringRes.data) {
-        setExpiringLibraries(expiringRes.data)
+        setExpiringOrganizations(expiringRes.data)
       }
     } catch (error) {
       console.error('Error fetching admin data:', error)
@@ -86,20 +86,20 @@ const AdminDashboard = () => {
     }
   }
 
-  const openSubscriptionModal = (library) => {
-    setSelectedLibrary(library)
+  const openSubscriptionModal = (organization) => {
+    setSelectedOrganization(organization)
     setFormData({
-      subscription_plan_id: library.subscription_plan_id || '',
-      subscription_start_date: library.subscription_start_date || new Date().toISOString().split('T')[0],
-      status: library.status
+      subscription_plan_id: organization.subscription_plan_id || '',
+      subscription_start_date: organization.subscription_start_date || new Date().toISOString().split('T')[0],
+      status: organization.status
     })
     setModalType('subscription')
     setShowModal(true)
   }
 
-  const openStatusModal = (library) => {
-    setSelectedLibrary(library)
-    setFormData({ ...formData, status: library.status })
+  const openStatusModal = (organization) => {
+    setSelectedOrganization(organization)
+    setFormData({ ...formData, status: organization.status })
     setModalType('status')
     setShowModal(true)
   }
@@ -107,14 +107,14 @@ const AdminDashboard = () => {
   const closeModal = () => {
     setShowModal(false)
     setModalType('')
-    setSelectedLibrary(null)
+    setSelectedOrganization(null)
   }
 
   const handleUpdateSubscription = async (e) => {
     e.preventDefault()
     try {
       await adminAPI.updateSubscription({
-        library_id: selectedLibrary.id,
+        org_id: selectedOrganization.id,
         subscription_plan_id: formData.subscription_plan_id,
         subscription_start_date: formData.subscription_start_date
       })
@@ -130,7 +130,7 @@ const AdminDashboard = () => {
     e.preventDefault()
     try {
       await adminAPI.updateStatus({
-        library_id: selectedLibrary.id,
+        org_id: selectedOrganization.id,
         status: formData.status
       })
       toast.success('Status updated successfully')
@@ -141,14 +141,14 @@ const AdminDashboard = () => {
     }
   }
 
-  const handleDeleteLibrary = async (id) => {
-    if (!confirm('Are you sure you want to delete this library? This action cannot be undone.')) return
+  const handleDeleteOrganization = async (id) => {
+    if (!confirm('Are you sure you want to delete this organization? This action cannot be undone.')) return
     try {
-      await adminAPI.deleteLibrary(id)
-      toast.success('Library deleted successfully')
+      await adminAPI.deleteOrganization(id)
+      toast.success('Organization deleted successfully')
       fetchData()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete library')
+      toast.error(error.response?.data?.message || 'Failed to delete organization')
     }
   }
 
@@ -197,7 +197,7 @@ const AdminDashboard = () => {
   }
 
   const handleDeletePlan = async (id) => {
-    if (!confirm('Are you sure you want to delete this plan? Libraries using this plan will be affected.')) return
+    if (!confirm('Are you sure you want to delete this plan? organizations using this plan will be affected.')) return
     try {
       await subscriptionPlansAPI.delete(id)
       toast.success('Subscription plan deleted successfully')
@@ -229,7 +229,7 @@ const AdminDashboard = () => {
       return
     }
 
-    if (!confirm(`Are you sure you want to delete ${selectedPlanIds.length} plan(s)? Libraries using these plans will be affected.`)) return
+    if (!confirm(`Are you sure you want to delete ${selectedPlanIds.length} plan(s)? organizations using these plans will be affected.`)) return
 
     try {
       await Promise.all(selectedPlanIds.map(id => subscriptionPlansAPI.delete(id)))
@@ -241,13 +241,13 @@ const AdminDashboard = () => {
     }
   }
 
-  const filteredLibraries = libraries.filter(library => {
-    const matchesSearch = library.library_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      library.library_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      library.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredOrgs = organizations.filter(organization => {
+    const matchesSearch = organization.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      organization.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      organization.email?.toLowerCase().includes(searchTerm.toLowerCase())
     
-    const matchesStatus = statusFilter === 'all' || library.status === statusFilter
-    const matchesPlan = planFilter === 'all' || library.subscription_plan_id === parseInt(planFilter)
+    const matchesStatus = statusFilter === 'all' || organization.status === statusFilter
+    const matchesPlan = planFilter === 'all' || organization.subscription_plan_id === parseInt(planFilter)
     
     return matchesSearch && matchesStatus && matchesPlan
   })
@@ -279,7 +279,7 @@ const AdminDashboard = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-1">Manage libraries and subscriptions</p>
+          <p className="text-gray-600 mt-1">Manage organizations and subscriptions</p>
         </div>
       </div>
 
@@ -287,15 +287,15 @@ const AdminDashboard = () => {
       <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200">
         <div className="flex border-b border-gray-200">
           <button
-            onClick={() => setActiveTab('libraries')}
+            onClick={() => setActiveTab('organizations')}
             className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors ${
-              activeTab === 'libraries'
+              activeTab === 'organizations'
                 ? 'text-primary border-b-2 border-primary'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             <Building className="w-5 h-5 inline-block mr-2" />
-            Libraries Management
+            Organizations Management
           </button>
           <button
             onClick={() => setActiveTab('plans')}
@@ -311,40 +311,40 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Expiring/Expired Libraries Alert */}
-      {activeTab === 'libraries' && (expiringLibraries.expired.length > 0 || expiringLibraries.expiring_soon.length > 0) && (
+      {/* Expiring/Expired Organizations Alert */}
+      {activeTab === 'organizations' && (expiringOrganizations.expired.length > 0 || expiringOrganizations.expiring_soon.length > 0) && (
         <div className="space-y-4">
-          {/* Expired Libraries Alert */}
-          {expiringLibraries.expired.length > 0 && (
+          {/* Expired Organizations Alert */}
+          {expiringOrganizations.expired.length > 0 && (
             <div className="bg-red-50 border-2 border-red-200 rounded-xl p-5">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="w-6 h-6 text-red-600 shrink-0 mt-1" />
                 <div className="flex-1">
                   <h3 className="text-lg font-bold text-red-900 mb-2">
-                    Expired Subscriptions ({expiringLibraries.expired.length})
+                    Expired Subscriptions ({expiringOrganizations.expired.length})
                   </h3>
                   <p className="text-sm text-red-700 mb-3">
-                    The following libraries have expired subscriptions and cannot access the system:
+                    The following Organizations have expired subscriptions and cannot access the system:
                   </p>
                   <div className="space-y-2">
-                    {expiringLibraries.expired.map((library) => (
-                      <div key={library.id} className="bg-white rounded-lg p-3 border border-red-200">
+                    {expiringOrganizations.expired.map((organization) => (
+                      <div key={organization.id} className="bg-white rounded-lg p-3 border border-red-200">
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-3">
-                              <span className="font-semibold text-gray-900">{library.library_name}</span>
-                              <span className="text-xs text-gray-500">({library.library_code})</span>
+                              <span className="font-semibold text-gray-900">{organization.name}</span>
+                              <span className="text-xs text-gray-500">({organization.code})</span>
                               <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs font-medium rounded">
-                                Expired {Math.abs(library.days_remaining)} day{Math.abs(library.days_remaining) !== 1 ? 's' : ''} ago
+                                Expired {Math.abs(organization.days_remaining)} day{Math.abs(organization.days_remaining) !== 1 ? 's' : ''} ago
                               </span>
                             </div>
                             <div className="text-sm text-gray-600 mt-1">
-                              <span className="font-medium">{library.owner_name}</span> • {library.email}
-                              {library.subscription_plan_name && ` • ${library.subscription_plan_name}`}
+                              <span className="font-medium">{organization.owner_name}</span> • {organization.email}
+                              {organization.subscription_plan_name && ` • ${organization.subscription_plan_name}`}
                             </div>
                           </div>
                           <button
-                            onClick={() => openSubscriptionModal(library)}
+                            onClick={() => openSubscriptionModal(organization)}
                             className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors shrink-0"
                           >
                             Renew Now
@@ -359,38 +359,38 @@ const AdminDashboard = () => {
           )}
 
           {/* Expiring Soon Alert */}
-          {expiringLibraries.expiring_soon.length > 0 && (
+          {expiringOrganizations.expiring_soon.length > 0 && (
             <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-5">
               <div className="flex items-start gap-3">
                 <Clock className="w-6 h-6 text-yellow-600 shrink-0 mt-1" />
                 <div className="flex-1">
                   <h3 className="text-lg font-bold text-yellow-900 mb-2">
-                    Expiring Soon ({expiringLibraries.expiring_soon.length})
+                    Expiring Soon ({expiringOrganizations.expiring_soon.length})
                   </h3>
                   <p className="text-sm text-yellow-700 mb-3">
-                    The following libraries will expire within 7 days:
+                    The following organizations will expire within 7 days:
                   </p>
                   <div className="space-y-2">
-                    {expiringLibraries.expiring_soon.map((library) => (
-                      <div key={library.id} className="bg-white rounded-lg p-3 border border-yellow-200">
+                    {expiringOrganizations.expiring_soon.map((organization) => (
+                      <div key={organization.id} className="bg-white rounded-lg p-3 border border-yellow-200">
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-3">
-                              <span className="font-semibold text-gray-900">{library.library_name}</span>
-                              <span className="text-xs text-gray-500">({library.library_code})</span>
+                              <span className="font-semibold text-gray-900">{organization.name}</span>
+                              <span className="text-xs text-gray-500">({organization.code})</span>
                               <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-medium rounded">
-                                {library.days_remaining === 0 
+                                {organization.days_remaining === 0 
                                   ? 'Expires today' 
-                                  : `${library.days_remaining} day${library.days_remaining !== 1 ? 's' : ''} remaining`}
+                                  : `${organization.days_remaining} day${organization.days_remaining !== 1 ? 's' : ''} remaining`}
                               </span>
                             </div>
                             <div className="text-sm text-gray-600 mt-1">
-                              <span className="font-medium">{library.owner_name}</span> • {library.email}
-                              {library.subscription_plan_name && ` • ${library.subscription_plan_name}`}
+                              <span className="font-medium">{organization.owner_name}</span> • {organization.email}
+                              {organization.subscription_plan_name && ` • ${organization.subscription_plan_name}`}
                             </div>
                           </div>
                           <button
-                            onClick={() => openSubscriptionModal(library)}
+                            onClick={() => openSubscriptionModal(organization)}
                             className="px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-lg hover:bg-yellow-700 transition-colors shrink-0"
                           >
                             Extend
@@ -407,13 +407,13 @@ const AdminDashboard = () => {
       )}
 
       {/* Stats Cards */}
-      {activeTab === 'libraries' && stats && (
+      {activeTab === 'organizations' && stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="stats-card stats-card-primary">
             <div className="stats-card-header">
               <div className="stats-card-content">
-                <p className="stats-card-label">Total Libraries</p>
-                <p className="stats-card-value">{stats.total_libraries || 0}</p>
+                <p className="stats-card-label">Total Organizations</p>
+                <p className="stats-card-value">{stats.total_organizations || 0}</p>
               </div>
               <div className="stats-card-icon">
                 <Building className="w-6 h-6" />
@@ -424,8 +424,8 @@ const AdminDashboard = () => {
           <div className="stats-card stats-card-success">
             <div className="stats-card-header">
               <div className="stats-card-content">
-                <p className="stats-card-label">Active Libraries</p>
-                <p className="stats-card-value">{stats.active_libraries || 0}</p>
+                <p className="stats-card-label">Active Organizations</p>
+                <p className="stats-card-value">{stats.active_organizations || 0}</p>
               </div>
               <div className="stats-card-icon">
                 <TrendingUp className="w-6 h-6" />
@@ -449,7 +449,7 @@ const AdminDashboard = () => {
             <div className="stats-card-header">
               <div className="stats-card-content">
                 <p className="stats-card-label">Expired</p>
-                <p className="stats-card-value">{stats.expired_libraries || 0}</p>
+                <p className="stats-card-value">{stats.expired_organizations || 0}</p>
               </div>
               <div className="stats-card-icon">
                 <AlertTriangle className="w-6 h-6" />
@@ -476,7 +476,7 @@ const AdminDashboard = () => {
                 <p className="stats-card-value">₹{stats.total_revenue || 0}</p>
               </div>
               <div className="stats-card-icon">
-                <DollarSign className="w-6 h-6" />
+                <IndianRupee className="w-6 h-6" />
               </div>
             </div>
           </div>
@@ -484,14 +484,14 @@ const AdminDashboard = () => {
       )}
 
       {/* Filters */}
-      {activeTab === 'libraries' && (
+      {activeTab === 'organizations' && (
         <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
         <div className="flex flex-col gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search libraries by name, code, or email..."
+              placeholder="Search organizations by name, code, or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="input pl-10 w-full"
@@ -539,106 +539,97 @@ const AdminDashboard = () => {
       </div>
       )}
 
-      {/* Libraries Table */}
-      {activeTab === 'libraries' && (
+      {/* organizations Table */}
+      {activeTab === 'organizations' && (
       <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="inline-block w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-gray-600 mt-4">Loading libraries...</p>
+              <p className="text-gray-600 mt-4">Loading Organizations...</p>
             </div>
           </div>
-        ) : filteredLibraries.length === 0 ? (
+        ) : filteredOrgs.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
             <Building className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-lg font-medium">No libraries found</p>
+            <p className="text-lg font-medium">No Organizations found</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b-2 border-gray-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Library</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase hidden md:table-cell">Contact</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase hidden lg:table-cell">Subscription</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase hidden lg:table-cell">Seats</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase hidden lg:table-cell">Expiry</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredLibraries.map((library) => {
-                  const days = daysUntilExpiry(library.subscription_end_date)
-                  const expired = isExpired(library.subscription_end_date)
-                  
-                  return (
-                    <tr key={library.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">{library.library_name}</div>
-                        <div className="text-sm text-gray-500">{library.library_code}</div>
-                      </td>
-                      <td className="px-6 py-4 hidden md:table-cell">
-                        <div className="text-sm text-gray-900">{library.email}</div>
-                        <div className="text-sm text-gray-500">{library.phone}</div>
-                      </td>
-                      <td className="px-6 py-4 hidden lg:table-cell">
-                        <div className="text-sm text-gray-900">{library.subscription_plan_name || 'No Plan'}</div>
-                        <div className="text-sm text-gray-500">₹{library.subscription_price || 0}</div>
-                      </td>
-                      <td className="px-6 py-4 hidden lg:table-cell">
-                        <div className="text-sm text-gray-900">{library.seats_occupied}/{library.seat_limit}</div>
-                        <div className="text-xs text-gray-500">{library.member_count} members</div>
-                      </td>
-                      <td className="px-6 py-4 hidden lg:table-cell">
-                        {library.subscription_end_date ? (
-                          <div className={`text-sm ${expired ? 'text-red-600 font-semibold' : days <= 7 ? 'text-yellow-600 font-semibold' : 'text-gray-900'}`}>
-                            {format(new Date(library.subscription_end_date), 'MMM dd, yyyy')}
-                            {!expired && days !== null && (
-                              <div className="text-xs text-gray-500">{days} days left</div>
-                            )}
-                            {expired && <div className="text-xs">Expired</div>}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-400">Not set</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(library.status)}`}>
-                          {library.status}
+          <div className="grid grid-cols-1 gap-4">
+            {filteredOrgs.map((organization) => {
+              const days = daysUntilExpiry(organization.subscription_end_date)
+              const expired = isExpired(organization.subscription_end_date)
+              
+              return (
+                <div key={organization.id} className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5 hover:shadow-md transition-all duration-200">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <h3 className="font-bold text-gray-900 text-lg truncate">{organization.name}</h3>
+                        <span className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-0.5 rounded">{organization.code}</span>
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${getStatusColor(organization.status)}`}>
+                          {organization.status}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => openSubscriptionModal(library)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Manage Subscription"
-                          >
-                            <Edit className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => openStatusModal(library)}
-                            className="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
-                            title="Change Status"
-                          >
-                            <AlertTriangle className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteLibrary(library.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete Library"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm text-gray-600 mb-4">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-gray-400" />
+                          <span className="truncate">{organization.email}</span>
                         </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-gray-400" />
+                          <span>{organization.phone}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Package className="w-4 h-4 text-gray-400" />
+                          <span className="font-medium text-gray-900">{organization.subscription_plan_name || 'No Plan'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-gray-400" />
+                          <span>{organization.seats_occupied}/{organization.seat_limit} Seats</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-gray-400" />
+                          {organization.subscription_end_date ? (
+                            <span className={`${expired ? 'text-red-600 font-semibold' : days <= 7 ? 'text-yellow-600 font-semibold' : ''}`}>
+                              Expires: {format(new Date(organization.subscription_end_date), 'MMM dd, yyyy')}
+                              {!expired && days !== null && ` (${days}d left)`}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">No expiry set</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => openSubscriptionModal(organization)}
+                        className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors border border-gray-100"
+                        title="Manage Subscription"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => openStatusModal(organization)}
+                        className="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors border border-gray-100"
+                        title="Change Status"
+                      >
+                        <AlertTriangle className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteOrganization(organization.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-gray-100"
+                        title="Delete organization"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
@@ -703,7 +694,7 @@ const AdminDashboard = () => {
               subscriptionPlans.map((plan) => (
                 <div key={plan.id} className={`bg-white rounded-xl shadow-sm border-2 p-6 transition-all ${
                   selectedPlanIds.includes(plan.id) 
-                    ? 'border-primary bg-blue-50' 
+                    ? 'border-primary bg-primary/10' 
                     : 'border-gray-200 hover:border-primary'
                 }`}>
                   <div className="flex items-start gap-3 mb-4">

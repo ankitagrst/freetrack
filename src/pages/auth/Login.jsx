@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Mail, Lock, BookmarkCheck } from 'lucide-react'
@@ -6,6 +6,7 @@ import { Mail, Lock, BookmarkCheck } from 'lucide-react'
 const Login = () => {
   const { login, isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
+  const hasRedirected = useRef(false)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -22,13 +23,15 @@ const Login = () => {
   }, [])
 
   useEffect(() => {
+    if (hasRedirected.current) return
     // Redirect if already authenticated
     if (isAuthenticated && user) {
+      hasRedirected.current = true
       if (user.role === 'system_admin') {
         navigate('/admin', { replace: true })
       } else {
-        // Redirect to library selection first
-        navigate('/select-library', { replace: true })
+        // Redirect to org selection first
+        navigate('/select-org', { replace: true })
       }
     }
   }, [isAuthenticated, user, navigate])
@@ -59,7 +62,7 @@ const Login = () => {
             <BookmarkCheck className="w-12 h-12 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">FeeTrack</h1>
-          <p className="text-gray-600">Library Management System</p>
+          <p className="text-gray-600">Organization Management System</p>
         </div>
 
         {/* Login Card */}

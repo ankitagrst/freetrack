@@ -3,7 +3,7 @@ import { format } from 'date-fns'
 import { X, Printer, Share2 } from 'lucide-react'
 import QRCode from 'qrcode'
 
-const InvoiceGenerator = ({ member, payment, onClose, library }) => {
+const InvoiceGenerator = ({ member, payment, onClose, org }) => {
   const [printing, setPrinting] = useState(false)
   const [qrDataUrl, setQrDataUrl] = useState(null)
 
@@ -13,12 +13,12 @@ const InvoiceGenerator = ({ member, payment, onClose, library }) => {
     setTimeout(() => setPrinting(false), 1000)
   }
 
-  const libraryInfo = {
-    name: library?.library_name || member.library_name || 'Library',
-    address: library?.address || member.library_address || 'Address',
-    phone: library?.phone || member.library_phone || '',
-    email: library?.email || member.library_email || '',
-    website: library?.website || member.library_website || ''
+  const orgInfo = {
+    name: org?.name || member.org_name || 'Organization',
+    address: org?.address || member.org_address || 'Address',
+    phone: org?.phone || member.org_phone || '',
+    email: org?.email || member.org_email || '',
+    website: organization?.website || member.organization_website || ''
   }
 
   const payableAmount = useMemo(() => Number(payment?.amount || member.plan_price || 0), [payment, member])
@@ -112,13 +112,13 @@ const InvoiceGenerator = ({ member, payment, onClose, library }) => {
           {/* Top Brand Row */}
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pb-4 border-b border-gray-200">
             <div className="min-w-0">
-              <h1 className="text-2xl font-bold tracking-wide text-gray-900 break-words">{libraryInfo.name}</h1>
-              {libraryInfo.address && <p className="text-sm text-gray-700 mt-1 break-words">{libraryInfo.address}</p>}
-              {(libraryInfo.phone || libraryInfo.email) && (
-                <p className="text-sm text-gray-600 mt-1">
-                  {libraryInfo.phone && <span>Ph: {libraryInfo.phone}</span>}
-                  {libraryInfo.phone && libraryInfo.email && ' · '}
-                  {libraryInfo.email && <span>Email: {libraryInfo.email}</span>}
+              <h1 className="text-2xl font-bold tracking-wide text-gray-900 break-words">{orgInfo.name}</h1>
+              {orgInfo.address && <p className="text-sm text-gray-700 mt-1 break-words">{orgInfo.address}</p>}
+              {(orgInfo.phone || orgInfo.email) && (
+                <p className="text-xs text-gray-600 mt-1">
+                  {orgInfo.phone && <span>Ph: {orgInfo.phone}</span>}
+                  {orgInfo.phone && orgInfo.email && ' · '}
+                  {orgInfo.email && <span>Email: {orgInfo.email}</span>}
                 </p>
               )}
             </div>
@@ -138,11 +138,11 @@ const InvoiceGenerator = ({ member, payment, onClose, library }) => {
               <p><span className="font-semibold">Seat No :</span> {member.seat_number || '—'}</p>
             </div>
             <div className="text-left sm:text-right space-y-1">
-              <p className="font-semibold">{libraryInfo.name}</p>
-              {libraryInfo.address && <p>{libraryInfo.address}</p>}
-              {libraryInfo.email && <p>Email: {libraryInfo.email}</p>}
-              {libraryInfo.phone && <p>Phone: {libraryInfo.phone}</p>}
-              {libraryInfo.website && <p>Website: {libraryInfo.website}</p>}
+              <p className="font-semibold">{orgInfo.name}</p>
+              {orgInfo.address && <p>{orgInfo.address}</p>}
+              {orgInfo.email && <p>Email: {orgInfo.email}</p>}
+              {orgInfo.phone && <p>Phone: {orgInfo.phone}</p>}
+              {orgInfo.website && <p>Website: {orgInfo.website}</p>}
             </div>
           </div>
 

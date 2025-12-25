@@ -1,12 +1,23 @@
 import { useState, useEffect } from 'react'
 import { plansAPI } from '../services/api'
-import { useLibrary } from '../context/LibraryContext'
+import { useOrg } from '../context/OrgContext'
 import { formatCurrency } from '../utils/formatters'
 import { Check, CreditCard, Plus, Edit, Trash2, Calendar, IndianRupee, TrendingUp, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const Plans = () => {
-  const { selectedLibrary } = useLibrary()
+  const { selectedOrg } = useOrg()
+  const orgType = selectedOrg?.type || 'library'
+  const isLibrary = orgType === 'library'
+
+  const getMemberLabel = () => {
+    return isLibrary || orgType === 'tution' ? 'Student' : 'Member'
+  }
+
+  const getPlanLabel = () => {
+    return isLibrary || orgType === 'tution' ? 'Student' : 'Membership'
+  }
+
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -21,15 +32,15 @@ const Plans = () => {
   })
 
   useEffect(() => {
-    if (selectedLibrary?.id) {
+    if (selectedOrg?.id) {
       fetchPlans()
     }
-  }, [selectedLibrary])
+  }, [selectedOrg])
 
   const fetchPlans = async () => {
     try {
       setLoading(true)
-      const response = await plansAPI.getAll({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] }))
+      const response = await plansAPI.getAll({ org_id: selectedOrg.id }).catch(() => ({ success: false, data: [] }))
       let plansList = []
       if (response.success && response.data?.plans) {
         plansList = response.data.plans
@@ -51,7 +62,7 @@ const Plans = () => {
         await plansAPI.update(currentPlan.id, formData)
         toast.success('Plan updated successfully')
       } else {
-        await plansAPI.create({ ...formData, library_id: selectedLibrary.id })
+        await plansAPI.create({ ...formData, org_id: selectedOrg.id })
         toast.success('Plan created successfully')
       }
       fetchPlans()
@@ -108,7 +119,7 @@ const Plans = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Subscription Plans</h1>
-          <p className="text-gray-600 mt-1">Create and manage membership plans for your library</p>
+          <p className="text-gray-600 mt-1">Create and manage {getPlanLabel().toLowerCase()} plans for your organization</p>
         </div>
         <button 
           onClick={() => openModal()} 
@@ -198,8 +209,8 @@ const Plans = () => {
                     </div>
                     
                     <div className="flex items-center gap-3 text-sm text-gray-700">
-                      <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg">
-                        <TrendingUp className="w-4 h-4 text-blue-600" />
+                      <div className="flex items-center justify-center w-8 h-8 bg-primary/10 rounded-lg">
+                        <TrendingUp className="w-4 h-4 text-primary" />
                       </div>
                       <span className="font-medium capitalize">{plan.plan_type?.replace('_', ' ')} plan</span>
                     </div>
@@ -225,7 +236,7 @@ const Plans = () => {
                     
                     {plan.member_count !== undefined && (
                       <span className="text-xs text-gray-500 font-medium">
-                        {plan.member_count} {plan.member_count === 1 ? 'member' : 'members'}
+                        {plan.member_count} {plan.member_count === 1 ? getMemberLabel() : `${getMemberLabel()}s`}
                       </span>
                     )}
                   </div>
@@ -327,7 +338,7 @@ const Plans = () => {
                   />
                   <div>
                     <span className="text-sm font-semibold text-gray-900 block">Active Plan</span>
-                    <span className="text-xs text-gray-600">Allow members to subscribe to this plan</span>
+                    <span className="text-xs text-gray-600">Allow {getMemberLabel().toLowerCase()}s to subscribe to this plan</span>
                   </div>
                 </label>
               </div>

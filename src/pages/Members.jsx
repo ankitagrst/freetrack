@@ -1,15 +1,36 @@
 import { useState, useEffect, useRef } from 'react'
 import { membersAPI, plansAPI, seatsAPI, paymentsAPI } from '../services/api'
-import { useLibrary } from '../context/LibraryContext'
+import { useOrg } from '../context/OrgContext'
 import { formatCurrency } from '../utils/formatters'
-import { Plus, Search, Edit, Trash2, Users, UserCheck, UserX, Clock, X, CreditCard, User, IdCard, RefreshCw, Ban, CheckCircle, Phone, MapPin, Calendar, IndianRupee, Printer, Camera, MessageSquare } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Users, UserCheck, UserX, Clock, X, CreditCard, User, IdCard, RefreshCw, Ban, CheckCircle, Phone, MapPin, Calendar, IndianRupee, Printer, Camera, MessageSquare, Image } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format, differenceInDays, addMonths, addDays } from 'date-fns'
 import InvoiceGenerator from '../components/InvoiceGenerator'
 import QRCode from 'qrcode'
 
 const Members = () => {
-  const { selectedLibrary } = useLibrary()
+  const { selectedOrg } = useOrg()
+  const orgType = selectedOrg?.type || 'library'
+  const isLibrary = orgType === 'library' || orgType === 'tution' || orgType === 'organization'
+  
+  const getOrgLabel = () => {
+    switch(orgType) {
+      case 'gym': return 'Gym'
+      case 'dance': return 'Dance Studio'
+      case 'yoga': return 'Yoga Center'
+      case 'tution': return 'Tuition Center'
+      default: return 'Library'
+    }
+  }
+
+  const getMemberLabel = () => {
+    return isLibrary || orgType === 'tution' ? 'Student' : 'Member'
+  }
+
+  const getMemberLabelPlural = () => {
+    return `${getMemberLabel()}s`
+  }
+
   const [members, setMembers] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -64,14 +85,27 @@ const Members = () => {
   const [showTemplateList, setShowTemplateList] = useState(false)
   const templateRef = useRef(null)
 
-  const templates = [
-    { key: 'membership', label: 'Membership' },
-    { key: 'due', label: 'Due Payment Reminder' },
-    { key: 'renewal', label: 'Renewal' },
-    { key: 'birthday', label: 'Birthday' },
-    { key: 'offers', label: 'Offers' },
-    { key: 'holiday', label: 'Holiday' }
-  ]
+  const getTemplates = () => {
+    const base = [
+      { key: 'membership', label: 'Membership' },
+      { key: 'due', label: 'Due Payment Reminder' },
+      { key: 'renewal', label: 'Renewal' },
+      { key: 'birthday', label: 'Birthday' },
+      { key: 'offers', label: 'Offers' },
+      { key: 'holiday', label: 'Holiday' }
+    ]
+    if (orgType === 'tution') {
+      return [
+        { key: 'admission', label: 'Admission' },
+        { key: 'fees', label: 'Fees Reminder' },
+        { key: 'test', label: 'Test Result' },
+        { key: 'holiday', label: 'Holiday' }
+      ]
+    }
+    return base
+  }
+
+  const templates = getTemplates()
 
   const computeEndDate = (planObj, start) => {
     if (!planObj || !start) return ''
@@ -110,19 +144,19 @@ const Members = () => {
   }
 
   useEffect(() => {
-    if (selectedLibrary?.id) {
+    if (selectedOrg?.id) {
       fetchMembers()
       fetchStats()
       fetchPlans()
       fetchSeats()
     }
-  }, [selectedLibrary])
+  }, [selectedOrg])
 
   const fetchMembers = async () => {
     try {
       setLoading(true)
       const response = await membersAPI.getAll({
-        library_id: selectedLibrary.id,
+        org_id: selectedOrg.id,
         page: 1,
         limit: 1000 // Get all members for now
       })
@@ -143,7 +177,7 @@ const Members = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await membersAPI.getStats({ library_id: selectedLibrary.id })
+      const response = await membersAPI.getStats({ org_id: selectedOrg.id })
       if (response.success && response.data) {
         setStats(response.data)
       }
@@ -154,7 +188,7 @@ const Members = () => {
 
   const fetchPlans = async () => {
     try {
-      const response = await plansAPI.getAll({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] }))
+      const response = await plansAPI.getAll({ org_id: selectedOrg.id }).catch(() => ({ success: false, data: [] }))
 
       let plansList = []
       if (response.success && response.data?.plans) {
@@ -189,7 +223,7 @@ const Members = () => {
 
   const fetchSeats = async () => {
     try {
-      const response = await seatsAPI.getAll({ library_id: selectedLibrary.id })
+      const response = await seatsAPI.getAll({ org_id: selectedOrg.id })
       let seatsList = []
       if (response.success && response.data?.seats) {
         seatsList = response.data.seats
@@ -218,8 +252,8 @@ const Members = () => {
   const handleSubmit = async (event) => {
     event.preventDefault()
 
-    if (!selectedLibrary?.id) {
-      toast.error('Please select a library first')
+    if (!selectedOrg?.id) {
+      toast.error('Please select an organization first')
       return
     }
 
@@ -232,16 +266,13 @@ const Members = () => {
     }
 
     const payload = {
-      library_id: selectedLibrary.id,
+      org_id: selectedOrg.id,
       full_name: formData.full_name?.trim(),
       phone: trimmedPhone,
       plan_id: Number(formData.plan_id),
       gender: formData.gender,
-      date_of_birth: formData.date_of_birth || null,
       address: formData.address,
-      emergency_contact: formData.emergency_contact,
       id_proof_type: formData.id_proof_type,
-      id_proof_number: formData.id_proof_number,
       id_proof_photo: formData.id_proof_photo || null,
       seat_id: seatIdValue,
       photo: formData.photo,
@@ -386,34 +417,34 @@ const Members = () => {
     const name = member.full_name || member.name || 'Member'
     const code = member.member_code || 'N/A'
     const endDate = member.plan_end_date ? format(new Date(member.plan_end_date), 'dd MMM, yyyy') : ''
-    const libraryName = selectedLibrary?.library_name || 'Library'
+    const orgName = selectedOrg?.name || 'Organization'
     const line1 = `Hello ${name},`
     const line2 = `Your payment due: ₹${Number(amount || 0).toLocaleString('en-IN')}`
     const line3 = `Member ID: ${code}${endDate ? ` | Valid till: ${endDate}` : ''}`
-    const line4 = `Library: ${libraryName}`
+    const line4 = `Organization: ${orgName}`
     return [line1, line2, line3, line4, '', 'QR attached for payment.'].join('\n')
   }
 
   const buildTemplateMessage = (templateKey, member) => {
     const name = member.full_name || member.name || 'Member'
     const code = member.member_code || 'N/A'
-    const libraryName = selectedLibrary?.library_name || 'Library'
+    const orgName = selectedOrg?.name || 'Organization'
     const endDate = member.plan_end_date ? format(new Date(member.plan_end_date), 'dd MMM, yyyy') : ''
     const amount = member.plan_price || 0
 
     switch (templateKey) {
       case 'membership':
-        return `Hello ${name},\nWelcome to ${libraryName}! Your Member ID is ${code}. Plan valid till ${endDate || 'N/A'}.`
+        return `Hello ${name},\nWelcome to ${orgName}! Your Member ID is ${code}. Plan valid till ${endDate || 'N/A'}.`
       case 'due':
-        return `Hello ${name},\nThis is a reminder that your payment of ₹${Number(amount).toLocaleString('en-IN')} is due. Member ID: ${code}. Plan valid till ${endDate || 'N/A'}.\nLibrary: ${libraryName}`
+        return `Hello ${name},\nThis is a reminder that your payment of ₹${Number(amount).toLocaleString('en-IN')} is due. Member ID: ${code}. Plan valid till ${endDate || 'N/A'}.\nOrganization: ${orgName}`
       case 'renewal':
-        return `Hello ${name},\nYour membership is expiring on ${endDate || 'N/A'}. Please renew to continue access. Member ID: ${code}. Library: ${libraryName}`
+        return `Hello ${name},\nYour membership is expiring on ${endDate || 'N/A'}. Please renew to continue access. Member ID: ${code}. Organization: ${orgName}`
       case 'birthday':
-        return `Happy Birthday ${name}! 🎉\nWishing you a wonderful year ahead. - ${libraryName}`
+        return `Happy Birthday ${name}! 🎉\nWishing you a wonderful year ahead. - ${organizationName}`
       case 'offers':
-        return `Hello ${name},\nWe have a new offer for members at ${libraryName}. Reply to know more!`
+        return `Hello ${name},\nWe have a new offer for members at ${organizationName}. Reply to know more!`
       case 'holiday':
-        return `Hello ${name},\n${libraryName} will remain closed for the upcoming holiday. Please plan your visits accordingly.`
+        return `Hello ${name},\n${organizationName} will remain closed for the upcoming holiday. Please plan your visits accordingly.`
       default:
         return buildPaymentShareMessage({ member, amount })
     }
@@ -473,7 +504,7 @@ const Members = () => {
 
       // QR encodes payment details (scannable content); if you later add UPI/VPA settings,
       // you can switch this text to a real UPI deep link.
-      const qrText = `FeeTrack Payment\nLibrary: ${selectedLibrary?.library_name || ''}\nMember: ${member.full_name || member.name || ''}\nMember ID: ${member.member_code || ''}\nAmount: ${amount}`
+      const qrText = `FeeTrack Payment\nOrganization: ${selectedOrg?.name || ''}\nMember: ${member.full_name || member.name || ''}\nMember ID: ${member.member_code || ''}\nAmount: ${amount}`
       const qrFile = await generateQrFile(qrText, `payment-qr-${member.member_code || member.id}.png`)
 
       if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [qrFile] }))) {
@@ -543,11 +574,8 @@ const Members = () => {
         phone: member.phone,
         plan_id: member.plan_id || '1',
         gender: member.gender || '',
-        date_of_birth: member.date_of_birth || '',
         address: member.address || '',
-        emergency_contact: member.emergency_contact || '',
         id_proof_type: member.id_proof_type || '',
-        id_proof_number: member.id_proof_number || '',
         id_proof_photo: member.id_proof_photo || '',
         seat_id: member.seat_id || '',
         photo: member.photo || ''
@@ -567,11 +595,8 @@ const Members = () => {
         phone: '',
         plan_id: '1',
         gender: '',
-        date_of_birth: '',
         address: '',
-        emergency_contact: '',
         id_proof_type: '',
-        id_proof_number: '',
         id_proof_photo: '',
         seat_id: '',
         photo: ''
@@ -584,10 +609,10 @@ const Members = () => {
       const defaultPlan = plans.find(p => String(p.id) === '1') || plans[0]
       setExpiryDate(computeEndDate(defaultPlan || {}, today))
       setPaymentMode('online')
-      setPaidAmount('')
+      setPaidAmount(defaultPlan?.price != null ? String(defaultPlan.price) : '')
     }
     // Refresh seats when opening modal to ensure seating options are up to date
-    if (selectedLibrary?.id) fetchSeats()
+    if (selectedOrg?.id) fetchSeats()
     setShowModal(true)
   }
 
@@ -627,14 +652,14 @@ const Members = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Members</h1>
-          <p className="text-gray-600 mt-1">Manage your library members</p>
+          <p className="text-gray-600 mt-1">Manage your members</p>
         </div>
         <button
           onClick={() => openModal()}
           className="btn btn-primary flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
-          Add Member
+          Add {getMemberLabel()}
         </button>
       </div>
 
@@ -648,7 +673,7 @@ const Members = () => {
           >
             <div className="stats-card-header">
               <div className="stats-card-content">
-                <p className="stats-card-label">Total Members</p>
+                <p className="stats-card-label">Total {getMemberLabelPlural()}</p>
                 <p className="stats-card-value">
                   {stats.total_members || 0}
                 </p>
@@ -666,7 +691,7 @@ const Members = () => {
           >
             <div className="stats-card-header">
               <div className="stats-card-content">
-                <p className="stats-card-label">Active Members</p>
+                <p className="stats-card-label">Active {getMemberLabelPlural()}</p>
                 <p className="stats-card-value">
                   {stats.active_members || 0}
                 </p>
@@ -684,7 +709,7 @@ const Members = () => {
           >
             <div className="stats-card-header">
               <div className="stats-card-content">
-                <p className="stats-card-label">Expired</p>
+                <p className="stats-card-label">Expired {getMemberLabelPlural()}</p>
                 <p className="stats-card-value">
                   {stats.expired_members || 0}
                 </p>
@@ -804,7 +829,7 @@ const Members = () => {
       {blockedMembers.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">Blocked Members</h2>
+            <h2 className="text-lg font-bold text-gray-900">Blocked {getMemberLabelPlural()}</h2>
             <span className="text-sm text-gray-600">{blockedMembers.length}</span>
           </div>
           <div className="space-y-2">
@@ -834,13 +859,13 @@ const Members = () => {
           <div className="flex items-center justify-center py-12 bg-white rounded-xl">
             <div className="text-center">
               <div className="inline-block w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-gray-600 mt-4">Loading members...</p>
+              <p className="text-gray-600 mt-4">Loading {getMemberLabelPlural().toLowerCase()}...</p>
             </div>
           </div>
         ) : filteredMembers.length === 0 ? (
           <div className="text-center py-12 text-gray-500 bg-white rounded-xl">
             <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-lg font-medium">No members found</p>
+            <p className="text-lg font-medium">No {getMemberLabel().toLowerCase()}s found</p>
             <p className="text-sm mt-2">Try adjusting your search or filters</p>
           </div>
         ) : (
@@ -884,8 +909,8 @@ const Members = () => {
                         <IdCard className="w-4 h-4" />
                         <span className="font-mono font-semibold">{member.member_code || 'N/A'}</span>
                       </p>
-                      {member.seat_number && (
-                        <p className="text-sm text-blue-600 font-semibold mt-1">
+                      {isLibrary && member.seat_number && (
+                        <p className="text-sm text-primary font-semibold mt-1">
                           🪑 Seat: {member.seat_number}
                         </p>
                       )}
@@ -1074,7 +1099,7 @@ const Members = () => {
         <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
           <div className="bg-white rounded-lg max-w-md w-full p-4 sm:p-6 max-h-[85vh] md:max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-gray-900 mb-4">
-              {currentMember ? 'Edit Member' : 'Add New Member'}
+              {currentMember ? `Edit ${getMemberLabel()}` : `Add New ${getMemberLabel()}`}
             </h2>
             
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -1092,18 +1117,46 @@ const Members = () => {
                       <User className="w-12 h-12 text-gray-400" />
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => document.getElementById('photoInput').click()}
-                    className="absolute bottom-0 right-0 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary-dark transition-colors"
-                  >
-                    <Camera className="w-5 h-5" />
-                  </button>
+                  <div className="absolute -bottom-2 -right-2 flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('photoInputCamera').click()}
+                      className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary-dark transition-colors"
+                      title="Take Photo"
+                    >
+                      <Camera className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('photoInputGallery').click()}
+                      className="w-8 h-8 bg-success text-white rounded-full flex items-center justify-center shadow-lg hover:bg-success-dark transition-colors"
+                      title="Select from Gallery"
+                    >
+                      <Image className="w-4 h-4" />
+                    </button>
+                  </div>
                   <input
-                    id="photoInput"
+                    id="photoInputCamera"
                     type="file"
                     accept="image/*"
                     capture="environment"
+                    onChange={(e) => {
+                      const file = e.target.files[0]
+                      if (file) {
+                        const reader = new FileReader()
+                        reader.onloadend = () => {
+                          setPhotoPreview(reader.result)
+                          setFormData({...formData, photo: reader.result})
+                        }
+                        reader.readAsDataURL(file)
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <input
+                    id="photoInputGallery"
+                    type="file"
+                    accept="image/*"
                     onChange={(e) => {
                       const file = e.target.files[0]
                       if (file) {
@@ -1152,6 +1205,7 @@ const Members = () => {
                     const selectedPlan = plans.find(p => String(p.id) === String(newPlanId))
                     if (selectedPlan) {
                       setExpiryDate(computeEndDate(selectedPlan, startDate))
+                      setPaidAmount(String(selectedPlan.price || ''))
                     }
                   }}
                   className="input"
@@ -1178,16 +1232,6 @@ const Members = () => {
                   <option value="female">Female</option>
                   <option value="other">Other</option>
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Date of Birth</label>
-                <input
-                  type="date"
-                  value={formData.date_of_birth}
-                  onChange={(e) => setFormData({...formData, date_of_birth: e.target.value})}
-                  className="input"
-                />
               </div>
 
               {/* Plan Start and End Dates */}
@@ -1222,33 +1266,21 @@ const Members = () => {
               </div>
 
               {/* Legal ID Proof Fields */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">ID Proof Type</label>
-                  <select
-                    value={formData.id_proof_type}
-                    onChange={(e) => setFormData({...formData, id_proof_type: e.target.value})}
-                    className="input"
-                  >
-                    <option value="">Select ID Type</option>
-                    <option value="aadhar">Aadhar Card</option>
-                    <option value="pan">PAN Card</option>
-                    <option value="passport">Passport</option>
-                    <option value="driving_license">Driving License</option>
-                    <option value="voter_id">Voter ID</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">ID Proof Number</label>
-                  <input
-                    type="text"
-                    value={formData.id_proof_number}
-                    onChange={(e) => setFormData({...formData, id_proof_number: e.target.value})}
-                    className="input"
-                    placeholder="Enter ID number"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">ID Proof Type</label>
+                <select
+                  value={formData.id_proof_type}
+                  onChange={(e) => setFormData({...formData, id_proof_type: e.target.value})}
+                  className="input"
+                >
+                  <option value="">Select ID Type</option>
+                  <option value="aadhar">Aadhar Card</option>
+                  <option value="pan">PAN Card</option>
+                  <option value="passport">Passport</option>
+                  <option value="driving_license">Driving License</option>
+                  <option value="voter_id">Voter ID</option>
+                  <option value="other">Other</option>
+                </select>
               </div>
 
               {/* ID Proof Photo Upload */}
@@ -1268,20 +1300,47 @@ const Members = () => {
                       )}
                     </div>
                   </div>
-                  <div className="flex-1">
-                    <button
-                      type="button"
-                      onClick={() => document.getElementById('idProofPhotoInput').click()}
-                      className="btn btn-secondary w-full flex items-center justify-center gap-2"
-                    >
-                      <Camera className="w-4 h-4" />
-                      {idProofPhotoPreview || formData.id_proof_photo ? 'Change ID Photo' : 'Upload ID Photo'}
-                    </button>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => document.getElementById('idProofPhotoInputCamera').click()}
+                        className="btn btn-secondary flex-1 flex items-center justify-center gap-2 text-xs"
+                      >
+                        <Camera className="w-4 h-4" />
+                        Camera
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => document.getElementById('idProofPhotoInputGallery').click()}
+                        className="btn btn-success flex-1 flex items-center justify-center gap-2 text-xs text-white"
+                      >
+                        <Image className="w-4 h-4" />
+                        Gallery
+                      </button>
+                    </div>
                     <input
-                      id="idProofPhotoInput"
+                      id="idProofPhotoInputCamera"
                       type="file"
                       accept="image/*"
                       capture="environment"
+                      onChange={(e) => {
+                        const file = e.target.files[0]
+                        if (file) {
+                          const reader = new FileReader()
+                          reader.onloadend = () => {
+                            setIdProofPhotoPreview(reader.result)
+                            setFormData({...formData, id_proof_photo: reader.result})
+                          }
+                          reader.readAsDataURL(file)
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <input
+                      id="idProofPhotoInputGallery"
+                      type="file"
+                      accept="image/*"
                       onChange={(e) => {
                         const file = e.target.files[0]
                         if (file) {
@@ -1312,77 +1371,123 @@ const Members = () => {
                 />
               </div>
 
-              {/* Emergency Contact */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Emergency Contact</label>
-                <input
-                  type="tel"
-                  value={formData.emergency_contact}
-                  onChange={(e) => setFormData({...formData, emergency_contact: e.target.value})}
-                  className="input"
-                  placeholder="Emergency contact number"
-                />
-              </div>
-
               {/* Allot Seat - Visual Selection */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3">Allot Seat (Optional)</label>
-                <div className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200">
-                  <p className="text-xs text-gray-600 mb-3">Select an available seat by clicking on it</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-48 overflow-y-auto">
-                    <button
-                      type="button"
-                      onClick={() => setFormData({...formData, seat_id: ''})}
-                      className={`p-3 rounded-lg border-2 transition-all ${
-                        !formData.seat_id 
-                          ? 'bg-blue-500 border-blue-600 text-white' 
-                          : 'bg-white border-gray-300 text-gray-700 hover:border-blue-300'
-                      }`}
-                    >
-                      <p className="text-xs font-bold">No Seat</p>
-                    </button>
+              {isLibrary && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Allot Seat (Optional)</label>
+                  <div className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200">
+                    <p className="text-xs text-gray-600 mb-3">Select an available seat by clicking on it</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-48 overflow-y-auto">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({...formData, seat_id: ''})}
+                        className={`p-3 rounded-lg border-2 transition-all ${
+                          !formData.seat_id 
+                            ? 'bg-primary border-primary text-white' 
+                            : 'bg-white border-gray-300 text-gray-700 hover:border-primary/30'
+                        }`}
+                      >
+                        <p className="text-xs font-bold">No Seat</p>
+                      </button>
 
-                    {seats.map(seat => {
-                      const isSelected = formData.seat_id === seat.id
-                      const isOccupiedByOther = seat.member_id && seat.id !== formData.seat_id
-                      const baseClasses = isOccupiedByOther
-                        ? 'bg-red-50 border-red-300 text-red-700 cursor-not-allowed'
-                        : 'bg-green-50 border-green-300 text-gray-700 hover:bg-green-100 hover:border-green-400'
+                      {seats.map(seat => {
+                        const isSelected = formData.seat_id === seat.id
+                        const isOccupiedByOther = seat.member_id && seat.id !== formData.seat_id
+                        const baseClasses = isOccupiedByOther
+                          ? 'bg-red-50 border-red-300 text-red-700 cursor-not-allowed'
+                          : 'bg-green-50 border-green-300 text-gray-700 hover:bg-green-100 hover:border-green-400'
 
-                      return (
+                        return (
+                          <button
+                            type="button"
+                            key={seat.id}
+                            disabled={isOccupiedByOther}
+                            onClick={() => !isOccupiedByOther && setFormData({...formData, seat_id: seat.id})}
+                            className={`p-3 rounded-lg border-2 transition-all transform hover:scale-105 ${
+                              isSelected
+                                ? 'bg-green-500 border-green-600 text-white shadow-lg'
+                                : baseClasses
+                            } ${isOccupiedByOther ? 'opacity-70' : ''}`}
+                          >
+                            <p className="text-sm font-bold">{seat.seat_number}</p>
+                            {seat.floor && <p className="text-xs opacity-75">F{seat.floor}</p>}
+                            <p className="text-[11px] mt-1 font-semibold">
+                              {isSelected
+                                ? 'Selected'
+                                : isOccupiedByOther
+                                  ? 'Occupied'
+                                  : 'Available'}
+                            </p>
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {formData.seat_id && (
+                      <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded text-center">
+                        <p className="text-sm font-semibold text-green-800">
+                          ✓ Seat {seats.find(s => s.id === formData.seat_id)?.seat_number} Selected
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Initial Payment Section - Only for New Members */}
+              {!currentMember && (
+                <div className="bg-primary/5 rounded-2xl p-4 border-2 border-primary/10 space-y-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <CreditCard className="w-5 h-5 text-primary" />
+                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">Initial Payment</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Amount Paid</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">₹</span>
+                        <input
+                          type="number"
+                          value={paidAmount}
+                          onChange={(e) => setPaidAmount(e.target.value)}
+                          className="w-full pl-7 pr-3 py-2.5 bg-white border-2 border-gray-100 rounded-xl focus:border-primary outline-none font-bold text-sm"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Method</label>
+                      <div className="flex bg-white p-1 rounded-xl border-2 border-gray-100">
                         <button
                           type="button"
-                          key={seat.id}
-                          disabled={isOccupiedByOther}
-                          onClick={() => !isOccupiedByOther && setFormData({...formData, seat_id: seat.id})}
-                          className={`p-3 rounded-lg border-2 transition-all transform hover:scale-105 ${
-                            isSelected
-                              ? 'bg-green-500 border-green-600 text-white shadow-lg'
-                              : baseClasses
-                          } ${isOccupiedByOther ? 'opacity-70' : ''}`}
+                          onClick={() => setPaymentMode('cash')}
+                          className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                            paymentMode === 'cash' 
+                              ? 'bg-primary text-white shadow-sm' 
+                              : 'text-gray-400 hover:text-gray-600'
+                          }`}
                         >
-                          <p className="text-sm font-bold">{seat.seat_number}</p>
-                          {seat.floor && <p className="text-xs opacity-75">F{seat.floor}</p>}
-                          <p className="text-[11px] mt-1 font-semibold">
-                            {isSelected
-                              ? 'Selected'
-                              : isOccupiedByOther
-                                ? 'Occupied'
-                                : 'Available'}
-                          </p>
+                          Cash
                         </button>
-                      )
-                    })}
-                  </div>
-                  {formData.seat_id && (
-                    <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded text-center">
-                      <p className="text-sm font-semibold text-green-800">
-                        ✓ Seat {seats.find(s => s.id === formData.seat_id)?.seat_number} Selected
-                      </p>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMode('online')}
+                          className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                            paymentMode === 'online' 
+                              ? 'bg-primary text-white shadow-sm' 
+                              : 'text-gray-400 hover:text-gray-600'
+                          }`}
+                        >
+                          Online
+                        </button>
+                      </div>
                     </div>
-                  )}
+                  </div>
+                  <p className="text-[10px] text-gray-500 font-medium italic">
+                    * This will create an enrollment payment record automatically.
+                  </p>
                 </div>
-              </div>
+              )}
 
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={closeModal} className="btn btn-secondary flex-1">
@@ -1408,7 +1513,7 @@ const Members = () => {
               </button>
             </div>
             
-            <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+            <div className="mb-4 p-4 bg-primary/10 rounded-lg">
               <p className="font-semibold text-gray-900">{renewMember.full_name || renewMember.name}</p>
               <p className="text-sm text-gray-600 mt-1">Current Plan: {renewMember.plan_name}</p>
               <p className="text-sm text-gray-600">
@@ -1486,166 +1591,141 @@ const Members = () => {
 
       {/* Profile Modal */}
       {showProfileModal && profileMember && (
-        <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
-          <div className="bg-white rounded-xl max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-            {/* Header with Photo */}
-            <div className="relative">
-              <button 
-                onClick={() => setShowProfileModal(false)} 
-                className="absolute top-4 right-4 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-600" />
-              </button>
-              
-              <div className="bg-gradient-primary p-6 pb-20 rounded-t-xl">
-                <div className="flex justify-center">
-                  <div className="w-24 h-24 rounded-full overflow-hidden bg-white shadow-lg border-4 border-white">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden animate-scale-in max-h-[90vh] flex flex-col">
+            {/* Header Section */}
+            <div className="p-4 border-b border-gray-100">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 rounded-full overflow-hidden bg-primary/10 border-4 border-white shadow-md flex items-center justify-center flex-shrink-0">
                     {profileMember.photo ? (
                       <img 
                         src={profileMember.photo} 
-                        alt={profileMember.full_name || profileMember.name}
+                        alt={profileMember.full_name}
                         className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.style.display = 'none'
-                          e.target.parentElement.innerHTML = `<div class="w-full h-full bg-gradient-primary flex items-center justify-center text-white text-3xl font-bold">${(profileMember.full_name || profileMember.name || 'U').charAt(0).toUpperCase()}</div>`
-                        }}
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-primary flex items-center justify-center text-white text-3xl font-bold">
-                        {(profileMember.full_name || profileMember.name || 'U').charAt(0).toUpperCase()}
-                      </div>
+                      <span className="text-2xl font-bold text-primary">
+                        {(profileMember.full_name || 'U').charAt(0).toUpperCase()}
+                      </span>
                     )}
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Member Info Card */}
-            <div className="px-6 -mt-12 relative z-10">
-              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-                {/* Name and Status */}
-                <div className="text-center mb-4">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-1">{profileMember.full_name || profileMember.name}</h3>
-                  <p className="text-sm text-gray-500 font-mono mb-2">{profileMember.member_code || 'N/A'}</p>
-                  <span className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full ${
-                    profileMember.status === 'active' 
-                      ? 'bg-green-100 text-green-800' 
-                      : profileMember.status === 'inactive'
-                      ? 'bg-gray-100 text-gray-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {profileMember.status}
-                  </span>
-                </div>
-
-                {/* Contact Info */}
-                <div className="flex items-center gap-2 text-gray-600 mb-3 pb-4 border-b">
-                  <Phone className="w-4 h-4" />
-                  <a href={`tel:${profileMember.phone}`} className="text-sm font-medium hover:underline">{profileMember.phone}</a>
-                </div>
-
-                {/* Plan & Type */}
-                <div className="grid grid-cols-2 gap-4 mb-4 pb-4 border-b">
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Plan</p>
-                    <p className="text-base font-bold text-gray-900">{profileMember.plan_name || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Type</p>
-                    <p className="text-base font-bold text-gray-900">{profileMember.plan_type || 'Fullday'}</p>
-                  </div>
-                </div>
-
-                {/* Join & Expiry */}
-                <div className="grid grid-cols-2 gap-4 mb-4 pb-4 border-b">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Join</p>
-                    <p className="text-base font-bold text-gray-900">
-                      {profileMember.plan_start_date ? format(new Date(profileMember.plan_start_date), 'dd MMM, yyyy') : 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Expiry</p>
-                    <p className="text-base font-bold text-gray-900">
-                      {profileMember.plan_end_date ? format(new Date(profileMember.plan_end_date), 'dd MMM, yyyy') : 'N/A'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Financial Summary */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Amount</p>
-                    <p className="text-lg font-bold text-gray-900">{formatCurrency(profileMember.plan_price || 0)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Paid</p>
-                    <p className="text-lg font-bold text-green-600">{formatCurrency(profileMember.total_paid || 0)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Due</p>
-                    <p className="text-lg font-bold text-red-600">{formatCurrency(profileMember.due_amount || 0)}</p>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={() => openWhatsAppChat(profileMember)}
-                    className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-colors"
-                  >
-                    <MessageSquare className="w-5 h-5" />
-                    WA Chat
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openWhatsAppReminderModal(profileMember)}
-                    className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-semibold transition-colors"
-                  >
-                    <MessageSquare className="w-5 h-5" />
-                    Send Reminder
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowProfileModal(false)
-                      openPaymentModal(profileMember)
-                    }}
-                    className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-3 bg-primary hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
-                  >
-                    <CreditCard className="w-5 h-5" />
-                    Add Pay
-                  </button>
-                </div>
-              </div>
-
-              {/* Additional Details (Collapsible) */}
-              <div className="mt-4 bg-gray-50 rounded-xl p-4">
-                <h4 className="font-semibold text-gray-900 mb-3 text-sm">Additional Details</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Email:</span>
-                    <span className="font-medium text-gray-900">{profileMember.email}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Seat:</span>
-                    <span className="font-medium text-gray-900">{profileMember.seat_number || 'Not Assigned'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Gender:</span>
-                    <span className="font-medium text-gray-900 capitalize">{profileMember.gender || 'N/A'}</span>
-                  </div>
-                  {profileMember.emergency_contact && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Emergency:</span>
-                      <span className="font-medium text-gray-900">{profileMember.emergency_contact}</span>
+                    <h3 className="text-xl font-black text-gray-900 leading-tight">
+                      {profileMember.full_name}
+                    </h3>
+                    <div className="flex items-center gap-1.5 mt-0.5 text-gray-500">
+                      <IdCard className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-bold tracking-wider uppercase">
+                        {profileMember.member_code || 'MEM-N/A'}
+                      </span>
                     </div>
-                  )}
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowProfileModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 text-gray-600 bg-gray-50 p-2 rounded-xl">
+                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                  <Phone className="w-4 h-4 text-primary" />
+                </div>
+                <a href={`tel:${profileMember.phone}`} className="text-base font-bold hover:text-primary transition-colors">
+                  {profileMember.phone}
+                </a>
+              </div>
+            </div>
+
+            {/* Details Section - Scrollable if needed */}
+            <div className="p-4 space-y-4 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Plan</p>
+                  <p className="text-base font-black text-gray-900">{profileMember.plan_name || 'N/A'}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Type</p>
+                  <p className="text-base font-black text-gray-900">{profileMember.plan_type || 'Fullday'}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Join</p>
+                  <p className="text-base font-black text-gray-900">
+                    {profileMember.plan_start_date ? format(new Date(profileMember.plan_start_date), 'dd MMM, yy') : 'N/A'}
+                  </p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Expiry</p>
+                  <p className="text-base font-black text-red-500">
+                    {profileMember.plan_end_date ? format(new Date(profileMember.plan_end_date), 'dd MMM, yy') : 'N/A'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="h-px bg-gray-100 w-full" />
+
+              {/* Financials in a more compact grid */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-0.5">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Amount</p>
+                  <p className="text-sm font-black text-gray-900">{formatCurrency(profileMember.plan_price || 0)}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Paid</p>
+                  <p className="text-sm font-black text-primary">{formatCurrency(profileMember.total_paid || 0)}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Due</p>
+                  <p className="text-sm font-black text-red-500">{formatCurrency(profileMember.due_amount || 0)}</p>
+                </div>
+              </div>
+
+              <div className="h-px bg-gray-100 w-full" />
+
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                {isLibrary && (
+                  <div className="space-y-0.5">
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Seat</p>
+                    <p className="text-xs font-black text-gray-900">{profileMember.seat_number || 'N/A'}</p>
+                  </div>
+                )}
+                <div className="space-y-0.5">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Gender</p>
+                  <p className="text-xs font-black text-gray-900 capitalize">{profileMember.gender || 'N/A'}</p>
+                </div>
+                <div className="col-span-2 space-y-0.5">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Email</p>
+                  <p className="text-xs font-black text-gray-900 truncate">{profileMember.email || 'N/A'}</p>
+                </div>
+                <div className="col-span-2 space-y-0.5">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Emergency</p>
+                  <p className="text-xs font-black text-gray-900">{profileMember.emergency_contact || 'N/A'}</p>
                 </div>
               </div>
             </div>
 
-            <div className="p-6"></div>
+            {/* Actions Section */}
+            <div className="p-4 bg-gray-50 flex gap-3 mt-auto">
+              <button
+                onClick={() => {
+                  setShowProfileModal(false)
+                  openPaymentModal(profileMember)
+                }}
+                className="flex-1 bg-primary text-white py-3.5 rounded-2xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <CreditCard className="w-5 h-5" />
+                Add Payment
+              </button>
+              <button
+                onClick={() => openWhatsAppChat(profileMember)}
+                className="w-12 h-12 bg-white border border-gray-200 rounded-2xl flex items-center justify-center text-green-600 hover:bg-green-50 transition-all active:scale-95 shadow-sm"
+              >
+                <MessageSquare className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1653,29 +1733,29 @@ const Members = () => {
       {/* Quick Payment Modal */}
       {showPaymentModal && paymentMember && (
         <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Add Payment</h2>
-              <button onClick={() => setShowPaymentModal(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
+              <h2 className="text-xl font-black text-gray-900">Add Payment</h2>
+              <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <X className="w-5 h-5 text-gray-400" />
               </button>
             </div>
             
-            <div className="mb-4 p-4 bg-green-50 rounded-lg">
-              <p className="font-semibold text-gray-900">{paymentMember.full_name || paymentMember.name}</p>
-              <p className="text-sm text-gray-600 mt-1">Plan: {paymentMember.plan_name}</p>
+            <div className="mb-4 p-3 bg-primary/5 rounded-2xl border border-primary/10">
+              <p className="font-bold text-gray-900">{paymentMember.full_name || paymentMember.name}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Plan: {paymentMember.plan_name}</p>
             </div>
 
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Amount *</label>
+            <div className="mb-5">
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Amount *</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</span>
                 <input
                   type="number"
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
-                  className="input w-full pl-8"
-                  placeholder="Enter amount"
+                  className="w-full pl-8 pr-4 py-3.5 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-primary focus:bg-white transition-all outline-none font-black text-lg"
+                  placeholder="0.00"
                   required
                   min="0"
                   step="0.01"
@@ -1687,15 +1767,15 @@ const Members = () => {
               <button 
                 type="button" 
                 onClick={() => setShowPaymentModal(false)} 
-                className="btn btn-secondary flex-1"
+                className="flex-1 py-3.5 rounded-2xl font-bold text-gray-500 hover:bg-gray-100 transition-all active:scale-95"
               >
                 Cancel
               </button>
               <button 
                 onClick={handleAddPayment} 
-                className="btn btn-primary flex-1"
+                className="flex-1 bg-primary text-white py-3.5 rounded-2xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-95"
               >
-                Add Payment
+                Confirm
               </button>
             </div>
           </div>
@@ -1707,65 +1787,68 @@ const Members = () => {
         <InvoiceGenerator
           member={invoiceMember}
           payment={invoicePayment}
-          library={selectedLibrary}
+          org={selectedOrg}
           onClose={closeInvoice}
         />
       )}
 
       {/* WhatsApp Reminder Modal */}
       {showWhatsAppModal && whatsAppMember && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
-            <div className="bg-gradient-danger px-6 py-5 flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white bg-white flex items-center justify-center">
-                <span className="text-lg font-bold text-red-600">{(whatsAppMember.full_name || whatsAppMember.name || 'U').charAt(0).toUpperCase()}</span>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-scale-in max-h-[90vh] flex flex-col">
+            <div className="bg-red-500 px-5 py-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white bg-white flex items-center justify-center flex-shrink-0">
+                <span className="text-base font-black text-red-500">{(whatsAppMember.full_name || whatsAppMember.name || 'U').charAt(0).toUpperCase()}</span>
               </div>
-              <div className="flex-1">
-                <p className="text-white text-xl font-semibold">Send WhatsApp</p>
-                <p className="text-white text-sm opacity-90">{whatsAppMember.full_name || whatsAppMember.name}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-lg font-black leading-tight">Send WhatsApp</p>
+                <p className="text-white/80 text-xs font-bold truncate">{whatsAppMember.full_name || whatsAppMember.name}</p>
               </div>
               <button
                 onClick={() => { setShowWhatsAppModal(false); setWhatsAppMember(null); }}
-                className="text-white/80 hover:text-white"
+                className="text-white/80 hover:text-white p-1"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm font-semibold text-gray-800">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Name</p>
-                  <p>{whatsAppMember.full_name || whatsAppMember.name}</p>
+            <div className="p-5 space-y-4 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Name</p>
+                  <p className="text-sm font-black text-gray-900">{whatsAppMember.full_name || whatsAppMember.name}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Mobile</p>
-                  <p>{whatsAppMember.phone || 'N/A'}</p>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mobile</p>
+                  <p className="text-sm font-black text-gray-900">{whatsAppMember.phone || 'N/A'}</p>
                 </div>
               </div>
 
               <div className="space-y-2 relative" ref={templateRef}>
-                <label className="text-sm font-semibold text-gray-700">Template</label>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Select Template</label>
                 <button
                   type="button"
                   onClick={() => setShowTemplateList(!showTemplateList)}
-                  className="input flex items-center justify-between"
-                  aria-haspopup="listbox"
-                  aria-expanded={showTemplateList}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-2xl hover:border-primary/30 transition-all"
                 >
-                  <span className={`${selectedTemplate ? 'text-gray-900' : 'text-gray-400'}`}>{selectedTemplate ? templates.find(t => t.key === selectedTemplate)?.label : 'Select template'}</span>
-                  <svg className="w-5 h-5 text-gray-400" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M6 8L10 12L14 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <span className={`text-sm font-bold ${selectedTemplate ? 'text-gray-900' : 'text-gray-400'}`}>{selectedTemplate ? templates.find(t => t.key === selectedTemplate)?.label : 'Select template'}</span>
+                  <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showTemplateList ? 'rotate-180' : ''}`} />
                 </button>
 
                 {showTemplateList && (
-                  <div className="absolute left-0 right-0 mt-2 bg-white rounded-xl shadow-lg max-h-64 overflow-y-auto border border-gray-100 z-50">
+                  <div className="absolute left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl max-h-48 overflow-y-auto border border-gray-100 z-50 p-2 space-y-1">
                     {templates.map(t => (
                       <button
                         key={t.key}
-                        onClick={() => { handleTemplateSelect(t.key); setShowTemplateList(false); }}
-                        className="w-full text-left px-4 py-4 hover:bg-gray-50 transition-colors text-lg font-medium"
+                        onClick={() => {
+                          setSelectedTemplate(t.key)
+                          setShowTemplateList(false)
+                        }}
+                        className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                          selectedTemplate === t.key 
+                            ? 'bg-primary text-white' 
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
                       >
                         {t.label}
                       </button>
@@ -1775,22 +1858,24 @@ const Members = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700">Message</label>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Message Preview</label>
                 <textarea
-                  rows="5"
-                  value={customMessage}
-                  onChange={(e) => setCustomMessage(e.target.value)}
-                  className="input"
-                  placeholder="Select a template to auto-fill message"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-primary focus:bg-white transition-all outline-none font-medium text-sm min-h-[120px] resize-none"
+                  placeholder="Type your message..."
                 />
               </div>
+            </div>
 
+            <div className="p-5 bg-gray-50 border-t border-gray-100 mt-auto">
               <button
-                onClick={sendWhatsAppReminder}
-                className="w-full py-3 rounded-lg bg-green-600 text-white font-semibold text-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                onClick={handleSendWhatsApp}
+                disabled={!message.trim()}
+                className="w-full bg-[#25D366] text-white py-4 rounded-2xl font-black shadow-lg shadow-green-500/20 hover:bg-[#22c35e] transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100"
               >
                 <MessageSquare className="w-5 h-5" />
-                Send WhatsApp
+                Send on WhatsApp
               </button>
             </div>
           </div>
@@ -1799,48 +1884,53 @@ const Members = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && memberToDelete && (
-        <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">Confirm Delete</h3>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl animate-scale-in">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-black text-gray-900">Confirm Delete</h3>
               <button
                 onClick={() => { setShowDeleteModal(false); setMemberToDelete(null); }}
-                className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5 text-gray-400" />
               </button>
             </div>
+            
             <div className="mb-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                  <Trash2 className="w-6 h-6 text-red-600" />
+              <div className="flex items-center gap-4 p-4 bg-red-50 rounded-2xl border border-red-100 mb-4">
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+                  <Trash2 className="w-6 h-6 text-red-500" />
                 </div>
-                <div>
-                  <p className="font-semibold text-gray-900">{memberToDelete.full_name || memberToDelete.name}</p>
-                  <p className="text-sm text-gray-500">{memberToDelete.email}</p>
+                <div className="min-w-0">
+                  <p className="font-black text-gray-900 truncate">{memberToDelete.full_name || memberToDelete.name}</p>
+                  <p className="text-xs font-bold text-red-400 uppercase tracking-wider">{memberToDelete.member_code || 'Member'}</p>
                 </div>
               </div>
-              <p className="text-gray-700 leading-relaxed">
+              
+              <p className="text-gray-600 text-sm leading-relaxed px-1">
                 Deleting removes member access and seat allocation but keeps payment records intact for reports and audits.
               </p>
-              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-sm text-amber-900">
-                  <strong>Note:</strong> Attendance and profile data will be removed. Payments stay saved.
+              
+              <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                <p className="text-[11px] text-amber-700 font-bold leading-tight">
+                  <span className="uppercase tracking-widest mr-1">Note:</span>
+                  Attendance and profile data will be removed. Payments stay saved.
                 </p>
               </div>
             </div>
+
             <div className="flex gap-3">
               <button
                 onClick={() => { setShowDeleteModal(false); setMemberToDelete(null); }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold"
+                className="flex-1 py-3.5 rounded-2xl font-bold text-gray-500 hover:bg-gray-100 transition-all active:scale-95"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteMember}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
+                className="flex-1 bg-red-500 text-white py-3.5 rounded-2xl font-bold shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all active:scale-95"
               >
-                Delete Member
+                Delete
               </button>
             </div>
           </div>

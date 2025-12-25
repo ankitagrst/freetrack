@@ -1,18 +1,18 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './context/AuthContext'
-import { LibraryProvider } from './context/LibraryContext'
+import { OrgProvider } from './context/OrgContext'
 import PrivateRoute from './components/PrivateRoute'
-import LibraryRoute from './components/LibraryRoute'
+import OrgRoute from './components/OrgRoute'
 
 // Pages
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
-import LibrarySelection from './pages/LibrarySelection'
+import OrgSelection from './pages/OrgSelection'
 import Dashboard from './pages/Dashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import Members from './pages/Members'
-import Libraries from './pages/Libraries'
+import Organizations from './pages/Organizations'
 import Payments from './pages/Payments'
 // import Attendance from './pages/Attendance'
 import Expenses from './pages/Expenses'
@@ -24,6 +24,7 @@ import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import Plans from './pages/Plans'
 import WaitingList from './pages/WaitingList'
+import NotFound from './pages/NotFound'
 
 // Layout
 import AppLayout from './components/layout/AppLayout'
@@ -32,36 +33,36 @@ function App() {
   return (
     <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
       <AuthProvider>
-        <LibraryProvider>
-          <Toaster 
-          position="top-center"
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: '#111827',
-              color: '#F7F9FB',
-            },
-            success: {
-              iconTheme: {
-                primary: '#1B9AAA',
-                secondary: '#fff',
+        <OrgProvider>
+            <Toaster 
+            position="top-center"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: '#1F2933',
+                color: '#F4F6F5',
               },
-            },
-          }}
-        />
-          <Routes>
+              success: {
+                iconTheme: {
+                  primary: '#2DB36C',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
+            <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             
-            {/* Library Selection - First page after login */}
-            <Route path="/select-library" element={<PrivateRoute><LibrarySelection /></PrivateRoute>} />
+            {/* Org Selection - First page after login */}
+            <Route path="/select-org" element={<PrivateRoute><OrgSelection /></PrivateRoute>} />
             
-            {/* Protected Routes - Require library selection */}
-            <Route element={<LibraryRoute><AppLayout /></LibraryRoute>}>
+            {/* Protected Routes - Require org selection */}
+            <Route element={<OrgRoute><AppLayout /></OrgRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/libraries" element={<Libraries />} />
+            <Route path="/organizations" element={<Organizations />} />
             <Route path="/members" element={<Members />} />
             <Route path="/payments" element={<Payments />} />
             {/* <Route path="/attendance" element={<Attendance />} /> */}
@@ -78,9 +79,9 @@ function App() {
           
           {/* Redirects */}
             <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
-        </LibraryProvider>
+        </OrgProvider>
       </AuthProvider>
     </BrowserRouter>
   )

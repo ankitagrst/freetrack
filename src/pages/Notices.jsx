@@ -1,11 +1,18 @@
 import { useState, useEffect } from 'react'
 import { noticesAPI } from '../services/api'
-import { useLibrary } from '../context/LibraryContext'
+import { useOrg } from '../context/OrgContext'
 import { Plus, Bell, Edit, Trash2, AlertCircle, Info, Calendar } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const Notices = () => {
-  const { selectedLibrary } = useLibrary()
+  const { selectedOrg } = useOrg()
+  const orgType = selectedOrg?.type || 'library'
+  const isLibrary = orgType === 'library'
+
+  const getMemberLabel = () => {
+    return isLibrary || orgType === 'tution' ? 'Student' : 'Member'
+  }
+
   const [notices, setNotices] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -21,15 +28,15 @@ const Notices = () => {
   })
 
   useEffect(() => {
-    if (selectedLibrary?.id) {
+    if (selectedOrg?.id) {
       fetchNotices()
     }
-  }, [selectedLibrary])
+  }, [selectedOrg])
 
   const fetchNotices = async () => {
     try {
       setLoading(true)
-      const response = await noticesAPI.getAll({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] }))
+      const response = await noticesAPI.getAll({ org_id: selectedOrg.id }).catch(() => ({ success: false, data: [] }))
       let noticesList = []
       if (response.success && response.data?.notices) {
         noticesList = response.data.notices
@@ -51,7 +58,7 @@ const Notices = () => {
         await noticesAPI.update(currentNotice.id, formData)
         toast.success('Notice updated successfully')
       } else {
-        await noticesAPI.create({ ...formData, library_id: selectedLibrary.id })
+        await noticesAPI.create({ ...formData, org_id: selectedOrg.id })
         toast.success('Notice created successfully')
       }
       fetchNotices()
@@ -97,7 +104,7 @@ const Notices = () => {
     switch(type) {
       case 'urgent': return <AlertCircle className="w-6 h-6 text-red-600" />
       case 'important': return <AlertCircle className="w-6 h-6 text-orange-600" />
-      default: return <Bell className="w-6 h-6 text-blue-600" />
+      default: return <Bell className="w-6 h-6 text-primary" />
     }
   }
 
@@ -105,7 +112,7 @@ const Notices = () => {
     switch(type) {
       case 'urgent': return 'border-l-4 border-red-600 bg-red-50'
       case 'important': return 'border-l-4 border-orange-600 bg-orange-50'
-      default: return 'border-l-4 border-blue-600'
+      default: return 'border-l-4 border-primary'
     }
   }
 
@@ -126,7 +133,7 @@ const Notices = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Notices & Announcements</h1>
-          <p className="text-gray-600 mt-1">Manage library notices and important announcements</p>
+          <p className="text-gray-600 mt-1">Manage organization notices and important announcements</p>
         </div>
         <button 
           onClick={() => openModal()} 
@@ -150,7 +157,7 @@ const Notices = () => {
           <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-12 text-center">
             <Bell className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No Notices Yet</h3>
-            <p className="text-gray-600 mb-6">Create your first notice to keep members informed</p>
+            <p className="text-gray-600 mb-6">Create your first notice to keep {getMemberLabel().toLowerCase()}s informed</p>
             <button 
               onClick={() => openModal()} 
               className="btn btn-primary inline-flex items-center gap-2"
@@ -174,7 +181,7 @@ const Notices = () => {
                       <span className={`px-2 py-1 text-xs font-medium rounded capitalize ${
                         notice.notice_type === 'urgent' ? 'bg-red-100 text-red-800' :
                         notice.notice_type === 'important' ? 'bg-orange-100 text-orange-800' :
-                        'bg-blue-100 text-blue-800'
+                        'bg-primary/10 text-primary'
                       }`}>
                         {notice.notice_type}
                       </span>
@@ -187,14 +194,14 @@ const Notices = () => {
                         {notice.end_date && ` - ${new Date(notice.end_date).toLocaleDateString('en-IN')}`}
                       </div>
                       <span>•</span>
-                      <span>{notice.target_audience === 'all' ? 'All Members' : notice.target_audience}</span>
+                      <span>{notice.target_audience === 'all' ? `All ${getMemberLabel()}s` : notice.target_audience}</span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => openModal(notice)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
                     title="Edit"
                   >
                     <Edit className="w-4 h-4" />
@@ -267,8 +274,8 @@ const Notices = () => {
                     onChange={(e) => setFormData({ ...formData, target_audience: e.target.value })} 
                     className="input"
                   >
-                    <option value="all">All Members</option>
-                    <option value="members">Members Only</option>
+                    <option value="all">All {getMemberLabel()}s</option>
+                    <option value="members">{getMemberLabel()}s Only</option>
                     <option value="staff">Staff Only</option>
                   </select>
                 </div>
@@ -307,7 +314,7 @@ const Notices = () => {
                   />
                   <div>
                     <span className="text-sm font-semibold text-gray-900 block">Active Notice</span>
-                    <span className="text-xs text-gray-600">Display this notice to members</span>
+                    <span className="text-xs text-gray-600">Display this notice to {getMemberLabel().toLowerCase()}s</span>
                   </div>
                 </label>
               </div>

@@ -1,47 +1,37 @@
 import { useState, useEffect } from 'react'
 import { expensesAPI } from '../services/api'
-import { useLibrary } from '../context/LibraryContext'
+import { useOrg } from '../context/OrgContext'
 import { formatCurrency } from '../utils/formatters'
-import { Plus, TrendingDown, DollarSign, Calendar, Edit, Trash2, Receipt, X, Eye } from 'lucide-react'
+import { Plus, TrendingDown, IndianRupee, Calendar, Edit, Trash2, Receipt, X, Eye } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const Expenses = () => {
-  const { selectedLibrary } = useLibrary()
-  const [expenses, setExpenses] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [currentExpense, setCurrentExpense] = useState(null)
-  const [showDetailModal, setShowDetailModal] = useState(false)
-  const [detailExpense, setDetailExpense] = useState(null)
-  const [stats, setStats] = useState(null)
-  const [formData, setFormData] = useState({
-    expense_category: '',
-    expense_type: '',
-    amount: '',
-    expense_date: new Date().toISOString().split('T')[0],
-    description: '',
-    payment_method: 'cash',
-    vendor_name: '',
-    bill_number: ''
-  })
+  const { selectedOrg } = useOrg()
+  const orgType = selectedOrg?.type || 'library'
 
-  const categories = [
-    'Rent', 'Electricity', 'Water', 'Internet', 'Maintenance',
-    'Salary', 'Stationery', 'Furniture', 'Books', 'Other'
-  ]
+  const getCategories = () => {
+    const base = ['Rent', 'Electricity', 'Water', 'Internet', 'Maintenance', 'Salary', 'Stationery', 'Other']
+    if (orgType === 'library') return [...base, 'Books', 'Furniture']
+    if (orgType === 'gym') return [...base, 'Equipment', 'Supplements']
+    if (orgType === 'dance' || orgType === 'yoga') return [...base, 'Music System', 'Mats/Props']
+    if (orgType === 'tution') return [...base, 'Study Material', 'Marketing']
+    return base
+  }
+
+  const categories = getCategories()
 
   useEffect(() => {
-    if (selectedLibrary?.id) {
+    if (selectedOrg?.id) {
       fetchExpenses()
     }
-  }, [selectedLibrary])
+  }, [selectedOrg])
 
   const fetchExpenses = async () => {
     try {
       setLoading(true)
       const [expensesRes, statsRes] = await Promise.all([
-        expensesAPI.getAll({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] })),
-        expensesAPI.getStats({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: null }))
+        expensesAPI.getAll({ org_id: selectedOrg.id }).catch(() => ({ success: false, data: [] })),
+        expensesAPI.getStats({ org_id: selectedOrg.id }).catch(() => ({ success: false, data: null }))
       ])
 
       let expensesList = []
@@ -73,7 +63,7 @@ const Expenses = () => {
         await expensesAPI.update(currentExpense.id, formData)
         toast.success('Expense updated successfully')
       } else {
-        await expensesAPI.create({ ...formData, library_id: selectedLibrary.id })
+        await expensesAPI.create({ ...formData, org_id: selectedOrg.id })
         toast.success('Expense added successfully')
       }
       fetchExpenses()
@@ -155,7 +145,7 @@ const Expenses = () => {
                 <p className="stats-card-value">{formatCurrency(stats.year_expense || 0)}</p>
               </div>
               <div className="stats-card-icon">
-                <DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />
+                <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
           </div>
@@ -187,7 +177,7 @@ const Expenses = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Expenses</h1>
-          <p className="text-gray-600 mt-1">Track and manage library expenses</p>
+          <p className="text-gray-600 mt-1">Track and manage organization expenses</p>
         </div>
         <button
           onClick={() => openModal()}
@@ -211,7 +201,7 @@ const Expenses = () => {
           <div className="text-center py-12">
             <Receipt className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No Expenses Yet</h3>
-            <p className="text-gray-600 mb-6">Start tracking your library expenses</p>
+            <p className="text-gray-600 mb-6">Start tracking your organization expenses</p>
             <button 
               onClick={() => openModal()}
               className="btn btn-primary inline-flex items-center gap-2"
@@ -228,7 +218,7 @@ const Expenses = () => {
                   <div className="flex-1 min-w-0">
                     {/* Header */}
                     <div className="flex items-center gap-2 mb-3 flex-wrap">
-                      <span className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-lg text-sm font-semibold">
+                      <span className="px-3 py-1.5 bg-info/10 text-info rounded-lg text-sm font-semibold">
                         {exp.expense_category}
                       </span>
                       {exp.expense_type && (
@@ -271,7 +261,7 @@ const Expenses = () => {
                   <div className="flex flex-col gap-2 shrink-0">
                     <button
                       onClick={() => openDetailModal(exp)}
-                      className="p-2.5 text-primary hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-primary/20"
+                      className="p-2.5 text-primary hover:bg-primary/10 rounded-lg transition-colors border border-transparent hover:border-primary/20"
                       title="View Details"
                     >
                       <Eye className="w-5 h-5" />
@@ -386,7 +376,7 @@ const Expenses = () => {
                 {/* Expense Category */}
                 <div className="text-center mb-4">
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">Expense Details</h3>
-                  <span className="inline-flex items-center px-4 py-1 text-sm font-bold rounded-full bg-blue-100 text-blue-800">
+                  <span className="inline-flex items-center px-4 py-1 text-sm font-bold rounded-full bg-info/10 text-info">
                     {detailExpense.expense_category}
                   </span>
                 </div>
@@ -456,7 +446,7 @@ const Expenses = () => {
                       setShowDetailModal(false)
                       openModal(detailExpense)
                     }}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary hover:bg-primary-dark text-white rounded-lg font-semibold transition-colors"
                   >
                     <Edit className="w-5 h-5" />
                     Edit Expense

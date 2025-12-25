@@ -5,14 +5,14 @@ import { useAuth } from '../context/AuthContext'
 import { orgsAPI, adminAPI, subscriptionPlansAPI } from '../services/api'
 import { formatCurrency } from '../utils/formatters'
 
-const organizations = () => {
-  const [organizations, setorganizations] = useState([])
+const Organizations = () => {
+  const [organizations, setOrganizations] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [showModal, setShowModal] = useState(false)
-  const [currentorganization, setCurrentorganization] = useState(null)
+  const [currentOrg, setCurrentOrg] = useState(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [organizationToDelete, setorganizationToDelete] = useState(null)
+  const [orgToDelete, setOrgToDelete] = useState(null)
   const [showBlockModal, setShowBlockModal] = useState(false)
   const [userToBlock, setUserToBlock] = useState(null)
   const [subscriptionPlans, setSubscriptionPlans] = useState([])
@@ -29,16 +29,16 @@ const organizations = () => {
   const { user } = useAuth()
 
   useEffect(() => {
-    fetchorganizations()
+    fetchOrganizations()
     fetchSubscriptionPlans()
   }, [])
 
-  const fetchorganizations = async () => {
+  const fetchOrganizations = async () => {
     try {
       setLoading(true)
       const response = await orgsAPI.getAll()
       if (response.success) {
-        setorganizations(response.data || [])
+        setOrganizations(response.data || [])
       }
     } catch (error) {
       toast.error('Failed to load organizations')
@@ -63,40 +63,40 @@ const organizations = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      if (currentorganization) {
-        await orgsAPI.update(currentorganization.id, formData)
-        toast.success('organization updated successfully')
+      if (currentOrg) {
+        await orgsAPI.update(currentOrg.id, formData)
+        toast.success('Organization updated successfully')
       } else {
         await orgsAPI.create(formData)
-        toast.success('organization created successfully')
+        toast.success('Organization created successfully')
       }
       setShowModal(false)
       resetForm()
-      fetchorganizations()
+      fetchOrganizations()
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to save organization')
     }
   }
 
-  const openModal = (organization = null) => {
-    if (organization) {
-      setCurrentorganization(organization)
+  const openModal = (org = null) => {
+    if (org) {
+      setCurrentOrg(org)
       setFormData({
-        name: organization.name || '',
-        code: organization.code || '',
-        address: organization.address || '',
-        city: organization.city || '',
-        state: organization.state || '',
-        pincode: organization.pincode || '',
-        seat_limit: organization.seat_limit || '',
-        subscription_plan_id: organization.subscription_plan_id || ''
+        name: org.name || '',
+        code: org.code || '',
+        address: org.address || '',
+        city: org.city || '',
+        state: org.state || '',
+        pincode: org.pincode || '',
+        seat_limit: org.seat_limit || '',
+        subscription_plan_id: org.subscription_plan_id || ''
       })
     }
     setShowModal(true)
   }
 
   const resetForm = () => {
-    setCurrentorganization(null)
+    setCurrentOrg(null)
     setFormData({
       name: '',
       code: '',
@@ -110,21 +110,21 @@ const organizations = () => {
   }
 
   const handleDelete = async () => {
-    if (!organizationToDelete) return
+    if (!orgToDelete) return
     
     try {
-      await orgsAPI.delete(organizationToDelete.id)
-      toast.success('organization deleted successfully')
+      await orgsAPI.delete(orgToDelete.id)
+      toast.success('Organization deleted successfully')
       setShowDeleteModal(false)
-      setorganizationToDelete(null)
-      fetchorganizations()
+      setOrgToDelete(null)
+      fetchOrganizations()
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to delete organization')
     }
   }
 
-  const openDeleteModal = (organization) => {
-    setorganizationToDelete(organization)
+  const openDeleteModal = (org) => {
+    setOrgToDelete(org)
     setShowDeleteModal(true)
   }
 
@@ -138,36 +138,36 @@ const organizations = () => {
       toast.success(`User ${isBlocking ? 'blocked' : 'unblocked'} successfully`)
       setShowBlockModal(false)
       setUserToBlock(null)
-      fetchorganizations()
+      fetchOrganizations()
     } catch (error) {
       toast.error(error.response?.data?.message || `Failed to ${isBlocking ? 'block' : 'unblock'} user`)
     }
   }
 
-  const openBlockModal = (organization) => {
-    setUserToBlock(organization)
+  const openBlockModal = (org) => {
+    setUserToBlock(org)
     setShowBlockModal(true)
   }
 
-  const handleDeleteUser = async (organization) => {
-    if (!confirm(`Are you sure you want to permanently delete the user and organization "${organization.name}"? This action cannot be undone.`)) {
+  const handleDeleteUser = async (org) => {
+    if (!confirm(`Are you sure you want to permanently delete the user and organization "${org.name}"? This action cannot be undone.`)) {
       return
     }
     
     try {
-      await adminAPI.deleteorganization(organization.id)
+      await adminAPI.deleteOrganization(org.id)
       toast.success('User and organization deleted successfully')
-      fetchorganizations()
+      fetchOrganizations()
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to delete user')
     }
   }
 
-  const filteredorganizations = organizations.filter(organization =>
-    organization.status === 'active' && (
-      organization.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      organization.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      organization.city?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredOrgs = organizations.filter(org =>
+    org.status === 'active' && (
+      org.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      org.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      org.city?.toLowerCase().includes(searchTerm.toLowerCase())
     )
   )
 
@@ -176,7 +176,7 @@ const organizations = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My organizations</h1>
+          <h1 className="text-2xl font-bold text-gray-900">My Organizations</h1>
           <p className="text-sm text-gray-600 mt-1">Manage all organization locations under your account</p>
         </div>
         <button
@@ -184,7 +184,7 @@ const organizations = () => {
           className="btn btn-primary flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
-          Add New organization
+          Add New Organization
         </button>
       </div>
 
@@ -207,8 +207,8 @@ const organizations = () => {
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total organizations</p>
-              <p className="text-3xl font-bold text-primary mt-2">{filteredorganizations.length}</p>
+              <p className="text-sm font-medium text-gray-600">Total Organizations</p>
+              <p className="text-3xl font-bold text-primary mt-2">{filteredOrgs.length}</p>
             </div>
             <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
               <Building2 className="w-6 h-6 text-primary" />
@@ -220,7 +220,7 @@ const organizations = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Total Members</p>
               <p className="text-3xl font-bold text-green-600 mt-2">
-                {filteredorganizations.reduce((sum, lib) => sum + (parseInt(lib.total_members) || 0), 0)}
+                {filteredOrgs.reduce((sum, org) => sum + (parseInt(org.total_members) || 0), 0)}
               </p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -233,7 +233,7 @@ const organizations = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Total Revenue</p>
               <p className="text-3xl font-bold text-primary mt-2">
-                {formatCurrency(filteredorganizations.reduce((sum, lib) => sum + (parseFloat(lib.total_revenue) || 0), 0))}
+                {formatCurrency(filteredOrgs.reduce((sum, org) => sum + (parseFloat(org.total_revenue) || 0), 0))}
               </p>
             </div>
             <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -246,73 +246,73 @@ const organizations = () => {
       {/* Info Banner */}
       <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
         <p className="text-sm text-primary">
-          <strong>Note:</strong> You can create and manage multiple organizations. Each organization operates independently with its own members, payments, and settings. Select a organization from the dropdown above to manage its data.
+          <strong>Note:</strong> You can create and manage multiple organizations. Each organization operates independently with its own members, payments, and settings. Select an organization from the sidebar to manage its data.
         </p>
       </div>
 
-      {/* organizations Grid */}
+      {/* Organizations Grid */}
       {loading ? (
         <div className="text-center py-12">
           <div className="inline-block w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-600 mt-4">Loading your organizations...</p>
         </div>
-      ) : filteredorganizations.length === 0 ? (
+      ) : filteredOrgs.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm border p-12 text-center">
           <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No organizations Found</h3>
-          <p className="text-gray-600 mb-6">Start by adding your first organization location</p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Organizations Found</h3>
+          <p className="text-gray-600 mb-6">Start by adding your first organization</p>
           <button
             onClick={() => openModal()}
             className="btn btn-primary inline-flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
-            Add organization
+            Add Organization
           </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredorganizations.map((organization) => (
-            <div key={organization.id} className="bg-white rounded-xl shadow-sm border hover:shadow-lg transition-all">
+          {filteredOrgs.map((org) => (
+            <div key={org.id} className="bg-white rounded-xl shadow-sm border hover:shadow-lg transition-all">
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">{organization.name}</h3>
-                    <p className="text-sm text-gray-500">Code: {organization.code}</p>
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">{org.name}</h3>
+                    <p className="text-sm text-gray-500">Code: {org.code}</p>
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => openModal(organization)}
+                      onClick={() => openModal(org)}
                       className="text-gray-400 hover:text-primary p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                      title="Edit organization"
+                      title="Edit Organization"
                     >
                       <Edit className="w-5 h-5" />
                     </button>
                     {user?.role === 'system_admin' && (
                       <>
                         <button
-                          onClick={() => openBlockModal(organization)}
+                          onClick={() => openBlockModal(org)}
                           className={`p-2 hover:bg-gray-100 rounded-lg transition-colors ${
-                            organization.user_status === 'active' 
+                            org.user_status === 'active' 
                               ? 'text-orange-500 hover:text-orange-600' 
                               : 'text-green-500 hover:text-green-600'
                           }`}
-                          title={organization.user_status === 'active' ? 'Block User' : 'Unblock User'}
+                          title={org.user_status === 'active' ? 'Block User' : 'Unblock User'}
                         >
-                          {organization.user_status === 'active' ? <Lock className="w-5 h-5" /> : <Unlock className="w-5 h-5" />}
+                          {org.user_status === 'active' ? <Lock className="w-5 h-5" /> : <Unlock className="w-5 h-5" />}
                         </button>
                         <button
-                          onClick={() => handleDeleteUser(organization)}
+                          onClick={() => handleDeleteUser(org)}
                           className="text-red-500 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete User & organization"
+                          title="Delete User & Organization"
                         >
                           <UserX className="w-5 h-5" />
                         </button>
                       </>
                     )}
                     <button
-                      onClick={() => openDeleteModal(organization)}
+                      onClick={() => openDeleteModal(org)}
                       className="text-red-500 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete organization"
+                      title="Delete Organization"
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>
@@ -322,36 +322,36 @@ const organizations = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2 text-gray-600">
                     <MapPin className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{organization.city}, {organization.state}</span>
+                    <span className="truncate">{org.city}, {org.state}</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
                     <Phone className="w-4 h-4 flex-shrink-0" />
-                    <span>{organization.phone}</span>
+                    <span>{org.phone}</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
                     <Mail className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{organization.email}</span>
+                    <span className="truncate">{org.email}</span>
                   </div>
                 </div>
 
                 <div className="mt-4 pt-4 border-t grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs text-gray-500">Total Seats</p>
-                    <p className="text-lg font-bold text-gray-900">{organization.seat_limit || 0}</p>
+                    <p className="text-lg font-bold text-gray-900">{org.seat_limit || 0}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Members</p>
-                    <p className="text-lg font-bold text-green-600">{organization.total_members || 0}</p>
+                    <p className="text-lg font-bold text-green-600">{org.total_members || 0}</p>
                   </div>
                 </div>
 
                 <div className="mt-4">
                   <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                    organization.status === 'active' 
+                    org.status === 'active' 
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-gray-100 text-gray-800'
                   }`}>
-                    {organization.status === 'active' ? 'Active' : 'Inactive'}
+                    {org.status === 'active' ? 'Active' : 'Inactive'}
                   </span>
                 </div>
               </div>
@@ -360,13 +360,13 @@ const organizations = () => {
         </div>
       )}
 
-      {/* Add/Edit organization Modal */}
+      {/* Add/Edit Organization Modal */}
       {showModal && (
         <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
           <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
-                {currentorganization ? 'Edit organization' : 'Add New organization'}
+                {currentOrg ? 'Edit Organization' : 'Add New Organization'}
               </h2>
               <button
                 onClick={() => { setShowModal(false); resetForm(); }}
@@ -379,7 +379,7 @@ const organizations = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">organization Name *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Organization Name *</label>
                   <input
                     type="text"
                     value={formData.name}
@@ -390,7 +390,7 @@ const organizations = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">organization Code *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Organization Code *</label>
                   <input
                     type="text"
                     value={formData.code}
@@ -513,7 +513,7 @@ const organizations = () => {
                   type="submit"
                   className="flex-1 btn btn-primary"
                 >
-                  {currentorganization ? 'Update organization' : 'Add organization'}
+                  {currentOrg ? 'Update Organization' : 'Add Organization'}
                 </button>
               </div>
             </form>
@@ -522,13 +522,13 @@ const organizations = () => {
       )}
 
       {/* Delete Confirmation Modal */}
-      {showDeleteModal && organizationToDelete && (
+      {showDeleteModal && orgToDelete && (
         <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-gray-900">Confirm Delete</h3>
               <button
-                onClick={() => { setShowDeleteModal(false); setorganizationToDelete(null); }}
+                onClick={() => { setShowDeleteModal(false); setOrgToDelete(null); }}
                 className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -540,22 +540,22 @@ const organizations = () => {
                   <Trash2 className="w-6 h-6 text-red-600" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">{organizationToDelete.name}</p>
-                  <p className="text-sm text-gray-500">Code: {organizationToDelete.code}</p>
+                  <p className="font-semibold text-gray-900">{orgToDelete.name}</p>
+                  <p className="text-sm text-gray-500">Code: {orgToDelete.code}</p>
                 </div>
               </div>
               <p className="text-gray-600">Are you sure you want to delete this organization? This will mark it as inactive and cannot be undone.</p>
-              {organizationToDelete.total_members > 0 && (
+              {orgToDelete.total_members > 0 && (
                 <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                   <p className="text-sm text-orange-800">
-                    <strong>Warning:</strong> This organization has {organizationToDelete.total_members} active member(s). Deletion may be prevented.
+                    <strong>Warning:</strong> This organization has {orgToDelete.total_members} active member(s). Deletion may be prevented.
                   </p>
                 </div>
               )}
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => { setShowDeleteModal(false); setorganizationToDelete(null); }}
+                onClick={() => { setShowDeleteModal(false); setOrgToDelete(null); }}
                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold"
               >
                 Cancel
@@ -564,7 +564,7 @@ const organizations = () => {
                 onClick={handleDelete}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
               >
-                Delete organization
+                Delete Organization
               </button>
             </div>
           </div>
@@ -633,4 +633,4 @@ const organizations = () => {
   )
 }
 
-export default organizations
+export default Organizations

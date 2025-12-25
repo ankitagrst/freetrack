@@ -61,7 +61,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'https://royalblue-bear-657267.hostingersite.com',
+        target: 'https://royalblue-bear-657267.hostingersite.com/',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '/api')
       }

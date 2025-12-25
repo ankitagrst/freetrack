@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { paymentsAPI, membersAPI } from '../services/api'
-import { useLibrary } from '../context/LibraryContext'
+import { useOrg } from '../context/OrgContext'
 import { formatCurrency } from '../utils/formatters'
 import { Plus, Search, IndianRupee, Calendar, Filter, Eye, Edit, Trash2, Receipt, CreditCard, X, Printer } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -8,7 +8,24 @@ import { format } from 'date-fns'
 import InvoiceGenerator from '../components/InvoiceGenerator'
 
 const Payments = () => {
-  const { selectedLibrary } = useLibrary()
+  const { selectedOrg } = useOrg()
+  const orgType = selectedOrg?.type || 'library'
+  const isLibrary = orgType === 'library'
+
+  const getOrgLabel = () => {
+    switch(orgType) {
+      case 'gym': return 'Gym'
+      case 'dance': return 'Dance Studio'
+      case 'yoga': return 'Yoga Center'
+      case 'tution': return 'Tuition Center'
+      default: return 'Library'
+    }
+  }
+
+  const getMemberLabel = () => {
+    return isLibrary || orgType === 'tution' ? 'Student' : 'Member'
+  }
+
   const [payments, setPayments] = useState([])
   const [members, setMembers] = useState([])
   const [stats, setStats] = useState(null)
@@ -37,19 +54,19 @@ const Payments = () => {
   const [monthlyBreakdown, setMonthlyBreakdown] = useState([])
 
   useEffect(() => {
-    if (selectedLibrary?.id) {
+    if (selectedOrg?.id) {
       fetchData()
     }
-  }, [selectedLibrary])
+  }, [selectedOrg])
 
   const fetchData = async () => {
     try {
       setLoading(true)
       const [paymentsRes, membersRes, statsRes, monthlyRes] = await Promise.all([
-        paymentsAPI.getAll({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] })),
-        membersAPI.getAll({ status: 'active', library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] })),
-        paymentsAPI.getStats({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: null })),
-        paymentsAPI.getMonthlyStats({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] }))
+        paymentsAPI.getAll({ org_id: selectedOrg.id }).catch(() => ({ success: false, data: [] })),
+        membersAPI.getAll({ status: 'active', org_id: selectedOrg.id }).catch(() => ({ success: false, data: [] })),
+        paymentsAPI.getStats({ org_id: selectedOrg.id }).catch(() => ({ success: false, data: null })),
+        paymentsAPI.getMonthlyStats({ org_id: selectedOrg.id }).catch(() => ({ success: false, data: [] }))
       ])
       
       
@@ -229,7 +246,7 @@ const Payments = () => {
 
   const getPaymentTypeColor = (type) => {
     switch (type) {
-      case 'enrollment': return 'bg-blue-100 text-blue-800'
+      case 'enrollment': return 'bg-info/10 text-info'
       case 'subscription': return 'bg-purple-100 text-purple-800'
       case 'renewal': return 'bg-green-100 text-green-800'
       case 'fine': return 'bg-red-100 text-red-800'
@@ -443,7 +460,7 @@ const Payments = () => {
           <div className="text-center py-12">
             <Receipt className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No Payments Found</h3>
-            <p className="text-gray-600 mb-6">Start recording member payments</p>
+            <p className="text-gray-600 mb-6">Start recording {getMemberLabel().toLowerCase()} payments</p>
             <button 
               onClick={() => openModal()}
               className="btn btn-primary inline-flex items-center gap-2"
@@ -461,7 +478,7 @@ const Payments = () => {
                     {/* Header */}
                     <div className="flex items-center gap-3 mb-3">
                       <div className="flex-1">
-                        <h3 className="font-bold text-gray-900 text-lg truncate">{payment.member_name || 'Unknown Member'}</h3>
+                        <h3 className="font-bold text-gray-900 text-lg truncate">{payment.member_name || `Unknown ${getMemberLabel()}`}</h3>
                       </div>
                       <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full capitalize shrink-0 ${getStatusColor(payment.status)}`}>
                         {payment.status || 'pending'}
@@ -497,7 +514,7 @@ const Payments = () => {
                   <div className="flex flex-col gap-2 shrink-0">
                     <button
                       onClick={() => openDetailModal(payment)}
-                      className="p-2.5 text-primary hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-primary/20"
+                      className="p-2.5 text-primary hover:bg-primary/10 rounded-lg transition-colors border border-transparent hover:border-primary/20"
                       title="View Details"
                     >
                       <Eye className="w-5 h-5" />
@@ -527,14 +544,14 @@ const Payments = () => {
             
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Member *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">{getMemberLabel()} *</label>
                 <select
                   value={formData.member_id}
                   onChange={(e) => setFormData({...formData, member_id: e.target.value})}
                   className="input"
                   required
                 >
-                  <option value="">Select Member</option>
+                  <option value="">Select {getMemberLabel()}</option>
                   {members.map((member) => (
                     <option key={member.id} value={member.id}>
                       {member.full_name} ({member.member_code})
@@ -637,7 +654,7 @@ const Payments = () => {
         <InvoiceGenerator
           member={invoiceMember}
           payment={invoicePayment}
-          library={selectedLibrary}
+          organization={selectedOrg}
           onClose={closeInvoice}
         />
       )}
@@ -671,7 +688,7 @@ const Payments = () => {
                 <div className="text-center mb-4">
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">Payment Details</h3>
                   <div className="flex items-center justify-center gap-2">
-                    <span className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full capitalize ${detailPayment.payment_type === 'subscription' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
+                    <span className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full capitalize ${detailPayment.payment_type === 'subscription' ? 'bg-info/10 text-info' : 'bg-purple-100 text-purple-800'}`}>
                       {detailPayment.payment_type || 'N/A'}
                     </span>
                     <span className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full capitalize ${detailPayment.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
@@ -743,7 +760,7 @@ const Payments = () => {
                       setShowDetailModal(false)
                       openModal(detailPayment)
                     }}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary hover:bg-primary-dark text-white rounded-lg font-semibold transition-colors"
                   >
                     <Edit className="w-5 h-5" />
                     Edit

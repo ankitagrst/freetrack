@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import ErrorBoundary from '../ErrorBoundary'
 import { useAuth } from '../../context/AuthContext'
-import { useLibrary } from '../../context/LibraryContext'
+import { useOrg } from '../../context/OrgContext'
 import { 
   Menu, X, LayoutDashboard, Users, CreditCard, ClipboardCheck, 
   Receipt, Sofa, Bell, MessageSquare, HelpCircle, FileText, 
@@ -13,7 +13,7 @@ const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const { user, logout } = useAuth()
-  const { selectedLibrary, clearLibrary } = useLibrary()
+  const { selectedOrg, clearSelection } = useOrg()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -29,17 +29,21 @@ const AppLayout = () => {
       }
     }
     
+    const orgType = selectedOrg?.type || 'library'
+    const isLibrary = orgType === 'library' || orgType === 'tution'
+    const memberLabel = isLibrary ? 'Students' : 'Members'
+    
     return {
       primary: [
         { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-        { path: '/libraries', icon: BookOpen, label: 'My Libraries' },
-        { path: '/members', icon: Users, label: 'Members' },
+        { path: '/organizations', icon: BookOpen, label: 'My Organizations' },
+        { path: '/members', icon: Users, label: memberLabel },
         { path: '/payments', icon: CreditCard, label: 'Payments' },
-        // { path: '/attendance', icon: ClipboardCheck, label: 'Attendance' },
+        { path: '/attendance', icon: ClipboardCheck, label: 'Attendance' },
       ],
       secondary: [
         { path: '/expenses', icon: Receipt, label: 'Expenses' },
-        { path: '/seats', icon: Sofa, label: 'Seats' },
+        ...(isLibrary ? [{ path: '/seats', icon: Sofa, label: 'Seats' }] : []),
         { path: '/waiting-list', icon: UserPlus, label: 'Waiting List' },
         { path: '/notices', icon: Bell, label: 'Notices' },
         { path: '/sms', icon: MessageSquare, label: 'SMS' },
@@ -73,7 +77,7 @@ const AppLayout = () => {
   }, [])
 
   return (
-    <div style={{ '--bottom-nav-height': '72px' }} className="flex flex-col h-screen overflow-hidden bg-gray-50">
+    <div style={{ '--bottom-nav-height': '72px' }} className="flex flex-col h-screen overflow-hidden bg-bg">
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div 
@@ -93,7 +97,7 @@ const AppLayout = () => {
             </div>
             <div>
               <h1 className="font-bold text-lg">FeeTrack</h1>
-              <p className="text-xs text-gray-400">{user?.libraryName || 'Admin'}</p>
+              <p className="text-xs text-gray-400">{user?.organizationName || 'Admin'}</p>
             </div>
           </div>
         </div>
@@ -132,7 +136,7 @@ const AppLayout = () => {
           </div>
           <button
             onClick={() => {
-              clearLibrary()
+              clearSelection()
               logout()
             }}
             className="flex items-center gap-2 w-full px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white transition-colors"
@@ -152,21 +156,21 @@ const AppLayout = () => {
               <BookOpen className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1">
-              {user?.role !== 'system_admin' && selectedLibrary ? (
+              {user?.role !== 'system_admin' && selectedOrg ? (
                 <div>
                   <div className="flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-primary" />
                     <p className="text-sm font-bold text-gray-900 truncate max-w-[150px] sm:max-w-none">
-                      {selectedLibrary.library_name}
+                      {selectedOrg.name}
                     </p>
                     <button
-                      onClick={() => navigate('/select-library')}
+                      onClick={() => navigate('/select-org')}
                       className="text-xs text-primary hover:text-primary/80 font-medium"
                     >
                       Change
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500 hidden sm:block">{selectedLibrary.city}, {selectedLibrary.state}</p>
+                  <p className="text-xs text-gray-500 hidden sm:block">{selectedOrg.city}, {selectedOrg.state}</p>
                 </div>
               ) : (
                 <div>
@@ -194,10 +198,10 @@ const AppLayout = () => {
               <div>User: {user ? user.email : 'Not logged in'}</div>
               <div>Role: {user ? user.role : 'N/A'}</div>
               <div>Path: {location.pathname}</div>
-            {selectedLibrary && <div>Library: {selectedLibrary.library_name} (ID: {selectedLibrary.id})</div>}
+            {selectedOrg && <div>Organization: {selectedOrg.name} (ID: {selectedOrg.id})</div>}
             </div>
             <ErrorBoundary>
-              <Outlet key={selectedLibrary?.id || 'no-library'} />
+              <Outlet key={selectedOrg?.id || 'no-organization'} />
             </ErrorBoundary>
           </div>
         </main>
@@ -261,7 +265,7 @@ const AppLayout = () => {
                       className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-all ${
                         isActive(item.path)
                           ? 'bg-primary text-white'
-                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                          : 'bg-bg text-gray-700 hover:bg-gray-100'
                       }`}
                     >
                       <item.icon className="w-6 h-6" />
@@ -292,7 +296,7 @@ const AppLayout = () => {
                   </div>
                   <div>
                     <h1 className="font-bold text-lg">FeeTrack</h1>
-                    <p className="text-xs text-gray-500">{user?.libraryName}</p>
+                    <p className="text-xs text-gray-500">{user?.organizationName}</p>
                   </div>
                 </div>
                 <button

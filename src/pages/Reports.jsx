@@ -1,13 +1,20 @@
 import { useState, useEffect } from 'react'
 import { reportsAPI, paymentsAPI, expensesAPI } from '../services/api'
-import { useLibrary } from '../context/LibraryContext'
+import { useOrg } from '../context/OrgContext'
 import { formatCurrency, formatNumber } from '../utils/formatters'
-import { FileText, Download, Calendar, TrendingUp, BarChart3, DollarSign, TrendingDown, X, CreditCard } from 'lucide-react'
+import { FileText, Download, Calendar, TrendingUp, BarChart3, IndianRupee, TrendingDown, X, CreditCard } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
 const Reports = () => {
-  const { selectedLibrary } = useLibrary()
+  const { selectedOrg } = useOrg()
+  const orgType = selectedOrg?.type || 'library'
+  const isLibrary = orgType === 'library'
+
+  const getMemberLabel = () => {
+    return isLibrary || orgType === 'tution' ? 'Student' : 'Member'
+  }
+
   const [reportType, setReportType] = useState('payments')
   const [loading, setLoading] = useState(false)
   const [reportData, setReportData] = useState(null)
@@ -24,7 +31,7 @@ const Reports = () => {
 
   const reportTypes = [
     { value: 'payments', label: 'Payment Report' },
-    { value: 'members', label: 'Members Report' },
+    { value: 'members', label: `${getMemberLabel()}s Report` },
     // { value: 'attendance', label: 'Attendance Report' },
     { value: 'revenue', label: 'Revenue Report' }
   ]
@@ -33,7 +40,7 @@ const Reports = () => {
 
   const fetchYearlyData = async () => {
     try {
-      const response = await paymentsAPI.getAll({ library_id: selectedLibrary.id })
+      const response = await paymentsAPI.getAll({ org_id: selectedOrg.id })
       let allPayments = []
       
       if (response.success && response.data) {
@@ -83,8 +90,8 @@ const Reports = () => {
   const fetchPLData = async () => {
     try {
       const [paymentsRes, expensesRes] = await Promise.all([
-        paymentsAPI.getAll({ library_id: selectedLibrary.id }),
-        expensesAPI.getAll({ library_id: selectedLibrary.id })
+        paymentsAPI.getAll({ org_id: selectedOrg.id }),
+        expensesAPI.getAll({ org_id: selectedOrg.id })
       ])
 
       let payments = []
@@ -135,7 +142,7 @@ const Reports = () => {
     try {
       setLoading(true)
       let response
-      const reportFilters = { ...filters, library_id: selectedLibrary.id }
+      const reportFilters = { ...filters, org_id: selectedOrg.id }
       switch (reportType) {
         case 'payments':
           response = await reportsAPI.getPayments(reportFilters)
@@ -183,7 +190,7 @@ const Reports = () => {
             onClick={() => setShowPLReport(!showPLReport)}
             className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 btn-danger rounded-lg shadow-sm text-sm font-semibold"
           >
-            <DollarSign className="w-5 h-5" />
+            <IndianRupee className="w-5 h-5" />
             {showPLReport ? 'Hide P&L Report' : 'P&L Report'}
           </button>
           <button
@@ -203,7 +210,7 @@ const Reports = () => {
           <div className="bg-gradient-danger rounded-lg p-4 sm:p-6 text-white mb-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-xl sm:text-2xl font-bold">P&L Report</h2>
-              <DollarSign className="w-8 h-8" />
+              <IndianRupee className="w-8 h-8" />
             </div>
             <div className="text-center">
               <p className="text-3xl sm:text-4xl font-bold mb-2">
@@ -323,7 +330,7 @@ const Reports = () => {
 
       {/* Yearly Collection Graph */}
       {showCollectionReport && (
-        <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 sm:p-6">
+        <div className="bg-white rounded-xl shadow-sm border-2 border-primary/20 p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-gray-900">Yearly Collection Report</h2>
@@ -334,7 +341,7 @@ const Reports = () => {
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="flex-1 sm:flex-none px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="flex-1 sm:flex-none px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
               >
                 {[2023, 2024, 2025, 2026].map(year => (
                   <option key={year} value={year}>{year}</option>
@@ -345,9 +352,9 @@ const Reports = () => {
 
           {/* Stats Summary */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <div className="bg-gradient-muted rounded-lg p-3 sm:p-4 border border-blue-200">
+            <div className="bg-gradient-muted rounded-lg p-3 sm:p-4 border border-primary/20">
               <p className="text-xs sm:text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-xl sm:text-2xl font-bold text-blue-600 mt-1">{formatCurrency(totalYearlyRevenue)}</p>
+              <p className="text-xl sm:text-2xl font-bold text-primary mt-1">{formatCurrency(totalYearlyRevenue)}</p>
               <p className="text-xs text-gray-500 mt-1">{totalYearlyPayments} payments</p>
             </div>
             <button
@@ -386,8 +393,8 @@ const Reports = () => {
                     
                     let cumulativePercent = 0
                     const colors = [
-                      '#1B9AAA', '#16a34a', '#06b6d4', '#7c3aed', '#f59e0b', '#ef4444',
-                      '#9ca3af', '#158a96', '#15803d', '#0891b2', '#6d28d9', '#d97706'
+                      '#2DB36C', '#4FC98A', '#F59E0B', '#EF4444', '#7C3AED', '#1F2933',
+                      '#1F8F5F', '#16A34A', '#D97706', '#DC2626', '#6D28D9', '#6B7280'
                     ]
                     
                     return yearlyData.map((data, idx) => {
@@ -433,7 +440,7 @@ const Reports = () => {
                 {/* Center Label */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <p className="text-xs sm:text-sm text-gray-600 font-medium">Total Revenue</p>
-                  <p className="text-xl sm:text-2xl font-bold text-blue-600">{formatCurrency(totalYearlyRevenue)}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-primary">{formatCurrency(totalYearlyRevenue)}</p>
                   <p className="text-xs text-gray-500 mt-1">{selectedYear}</p>
                 </div>
               </div>
@@ -466,9 +473,9 @@ const Reports = () => {
           {/* Month Details */}
           <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3">
             {yearlyData.map((data, idx) => (
-              <div key={idx} className="bg-white rounded-lg p-2.5 sm:p-3 border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all">
+              <div key={idx} className="bg-white rounded-lg p-2.5 sm:p-3 border border-gray-200 hover:border-primary/30 hover:shadow-sm transition-all">
                 <p className="text-xs font-semibold text-gray-600">{data.month}</p>
-                <p className="text-base sm:text-lg font-bold text-blue-600 mt-1 break-words">₹{data.amount.toLocaleString('en-IN')}</p>
+                <p className="text-base sm:text-lg font-bold text-primary mt-1 break-words">₹{data.amount.toLocaleString('en-IN')}</p>
                 <p className="text-[10px] sm:text-xs text-gray-500">{data.count} payments</p>
               </div>
             ))}
@@ -538,7 +545,7 @@ const Reports = () => {
                             <div>
                               <p className="text-gray-500">Type</p>
                               <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${
-                                payment.payment_type === 'enrollment' ? 'bg-blue-100 text-blue-800' :
+                                payment.payment_type === 'enrollment' ? 'bg-info/10 text-info' :
                                 payment.payment_type === 'subscription' ? 'bg-green-100 text-green-800' :
                                 payment.payment_type === 'renewal' ? 'bg-purple-100 text-purple-800' :
                                 'bg-gray-100 text-gray-800'

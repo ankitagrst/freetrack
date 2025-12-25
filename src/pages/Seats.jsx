@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { seatsAPI, membersAPI } from '../services/api'
-import { useLibrary } from '../context/LibraryContext'
+import { useOrg } from '../context/OrgContext'
 import { Plus, Users, CheckCircle, XCircle, Edit, Trash2, Armchair, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const Seats = () => {
-  const { selectedLibrary } = useLibrary()
+  const { selectedOrg } = useOrg()
   const [seats, setSeats] = useState([])
   const [members, setMembers] = useState([])
   const [stats, setStats] = useState({ total: 0, available: 0, occupied: 0, occupancy_rate: '0%' })
@@ -15,6 +15,7 @@ const Seats = () => {
   const [currentSeat, setCurrentSeat] = useState(null)
   const [shiftFilter, setShiftFilter] = useState('all')
   const [memberIdSearch, setMemberIdSearch] = useState('')
+  const [selectedSeats, setSelectedSeats] = useState([])
   const [formData, setFormData] = useState({ 
     seat_number: '', 
     floor: '', 
@@ -23,18 +24,48 @@ const Seats = () => {
   })
 
   useEffect(() => {
-    if (selectedLibrary?.id) {
+    if (selectedOrg?.id) {
       fetchData()
     }
-  }, [selectedLibrary])
+  }, [selectedOrg])
+
+  const toggleSeatSelection = (seatId) => {
+    setSelectedSeats(prev => 
+      prev.includes(seatId) 
+        ? prev.filter(id => id !== seatId) 
+        : [...prev, seatId]
+    )
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedSeats.length === 0) return
+    
+    // Check if any selected seats are occupied
+    const occupiedSelected = seats.filter(s => selectedSeats.includes(s.id) && s.member_id)
+    if (occupiedSelected.length > 0) {
+      toast.error('Cannot delete occupied seats. Please deallocate them first.')
+      return
+    }
+
+    if (!confirm(`Delete ${selectedSeats.length} selected seat(s) permanently?`)) return
+    
+    try {
+      await seatsAPI.deleteBulk(selectedSeats)
+      toast.success(`${selectedSeats.length} seat(s) deleted successfully`)
+      setSelectedSeats([])
+      fetchData()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete seats')
+    }
+  }
 
   const fetchData = async () => {
     try {
       setLoading(true)
       const [seatsRes, membersRes, statsRes] = await Promise.all([
-        seatsAPI.getAll({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] })),
-        membersAPI.getAll({ status: 'active', library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] })),
-        seatsAPI.getStats({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: {} }))
+        seatsAPI.getAll({ org_id: selectedOrg.id }).catch(() => ({ success: false, data: [] })),
+        membersAPI.getAll({ status: 'active', org_id: selectedOrg.id }).catch(() => ({ success: false, data: [] })),
+        seatsAPI.getStats({ org_id: selectedOrg.id }).catch(() => ({ success: false, data: {} }))
       ])
       
       let seatsList = []
@@ -87,7 +118,7 @@ const Seats = () => {
           count: count,
           floor: formData.floor,
           section: formData.section,
-          library_id: selectedLibrary.id
+          org_id: selectedOrg.id
         })
         toast.success(`${count} seat(s) created successfully`)
       } else {
@@ -143,7 +174,7 @@ const Seats = () => {
     setCurrentSeat(seat)
     setFormData({ seat_number: seat.seat_number, floor: '', section: '', member_id: '' })
     // Refresh members before allocating, to ensure member list is current
-    if (selectedLibrary?.id) fetchData()
+    if (selectedOrg?.id) fetchData()
     setShowModal(true)
   }
 
@@ -200,15 +231,26 @@ const Seats = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Seats Management</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage library seats</p>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage organization seats</p>
         </div>
-        <button 
-          onClick={openCreateModal}
-          className="btn btn-primary flex items-center justify-center gap-2 text-sm sm:text-base"
-        >
-          <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-          Create Seats
-        </button>
+        <div className="flex gap-2">
+          {selectedSeats.length > 0 && (
+            <button 
+              onClick={handleBulkDelete}
+              className="btn bg-red-600 hover:bg-red-700 text-white flex items-center justify-center gap-2 text-sm sm:text-base"
+            >
+              <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              Delete ({selectedSeats.length})
+            </button>
+          )}
+          <button 
+            onClick={openCreateModal}
+            className="btn btn-primary flex items-center justify-center gap-2 text-sm sm:text-base"
+          >
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+            Create Seats
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -305,20 +347,43 @@ const Seats = () => {
           </div>
         </div>
 
-        {/* Seat Stats Summary */}
-        <div className="flex justify-center gap-6 mb-6 pb-4 border-b">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-900">{stats.total || seats.length}</div>
-            <div className="text-xs text-gray-600">All Seats</div>
+        {/* Seat Stats Summary & Select All */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 pb-4 border-b">
+          <div className="flex items-center gap-2">
+            <input 
+              type="checkbox" 
+              id="select-all-seats"
+              checked={seats.length > 0 && selectedSeats.length === seats.length}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setSelectedSeats(seats.map(s => s.id))
+                } else {
+                  setSelectedSeats([])
+                }
+              }}
+              className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+            />
+            <label htmlFor="select-all-seats" className="text-sm font-medium text-gray-700 cursor-pointer">
+              Select All
+            </label>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-red-600">{stats.occupied}</div>
-            <div className="text-xs text-gray-600">Allotted</div>
+
+          <div className="flex justify-center gap-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">{stats.total || seats.length}</div>
+              <div className="text-xs text-gray-600">All Seats</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-600">{stats.occupied}</div>
+              <div className="text-xs text-gray-600">Allotted</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{stats.available}</div>
+              <div className="text-xs text-gray-600">Unallotted</div>
+            </div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">{stats.available}</div>
-            <div className="text-xs text-gray-600">Unallotted</div>
-          </div>
+          
+          <div className="hidden sm:block w-20"></div> {/* Spacer for centering stats */}
         </div>
 
         {loading ? (
@@ -342,9 +407,10 @@ const Seats = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2 sm:gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2 sm:gap-3">
             {filteredSeats.map((seat) => {
               const isOccupied = seat.member_id != null && seat.member_id !== ''
+              const isSelected = selectedSeats.includes(seat.id)
               return (
                 <div 
                   key={seat.id} 
@@ -352,9 +418,30 @@ const Seats = () => {
                     isOccupied 
                       ? 'bg-red-50 border-red-300 hover:shadow-md' 
                       : 'bg-green-50 border-green-300 hover:shadow-md cursor-pointer'
-                  }`}
-                  onClick={() => !isOccupied && openAllocateModal(seat)}
+                  } ${isSelected ? 'ring-2 ring-primary border-primary' : ''}`}
+                  onClick={() => {
+                    if (isSelected) {
+                      toggleSeatSelection(seat.id)
+                    } else if (!isOccupied) {
+                      openAllocateModal(seat)
+                    } else {
+                      toggleSeatSelection(seat.id)
+                    }
+                  }}
                 >
+                  {/* Selection Checkbox */}
+                  <div className="absolute top-1 left-1">
+                    <input 
+                      type="checkbox" 
+                      checked={isSelected}
+                      onChange={(e) => {
+                        e.stopPropagation()
+                        toggleSeatSelection(seat.id)
+                      }}
+                      className="w-3 h-3 sm:w-4 sm:h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                    />
+                  </div>
+
                   {/* Seat Icon */}
                   <div className="mb-2">
                     {isOccupied ? (

@@ -39,6 +39,11 @@ export const membersAPI = {
     const response = await apiClient.get('/members.php?action=stats', { params })
     return response.data
   },
+
+  getOrgInfo: async (params = {}) => {
+    const response = await apiClient.get('/members.php?action=organization_info', { params })
+    return response.data
+  },
   
   getById: async (id) => {
     const response = await apiClient.get('/members.php', { params: { id } })
@@ -296,6 +301,11 @@ export const seatsAPI = {
     // Use proper DELETE method with id in query parameter
     const response = await apiClient.delete(`/seats.php?id=${seatId}`)
     return response.data
+  },
+
+  deleteBulk: async (seatIds) => {
+    const response = await apiClient.delete('/seats.php', { data: { ids: seatIds } })
+    return response.data
   }
 }
 
@@ -385,23 +395,23 @@ export const adminAPI = {
     return response.data
   },
 
-  getLibraries: async (params = {}) => {
-    const response = await apiClient.get('/admin.php?action=libraries', { params })
+  getOrganizations: async (params = {}) => {
+    const response = await apiClient.get('/admin.php?action=organizations', { params })
     return response.data
   },
 
-  getLibraryById: async (id) => {
+  getOrganizationById: async (id) => {
     const response = await apiClient.get(`/admin.php?id=${id}`)
     return response.data
   },
 
-  createLibrary: async (data) => {
-    const response = await apiClient.post('/admin.php?action=create-library', data)
+  createOrganization: async (data) => {
+    const response = await apiClient.post('/admin.php?action=create-organization', data)
     return response.data
   },
 
-  updateLibrary: async (data) => {
-    const response = await apiClient.put('/admin.php?action=update-library', data)
+  updateOrganization: async (data) => {
+    const response = await apiClient.put('/admin.php?action=update-organization', data)
     return response.data
   },
 
@@ -415,13 +425,13 @@ export const adminAPI = {
     return response.data
   },
 
-  deleteLibrary: async (id) => {
+  deleteOrganization: async (id) => {
     const response = await apiClient.delete(`/admin.php?id=${id}`)
     return response.data
   },
 
-  getExpiringLibraries: async () => {
-    const response = await apiClient.get('/admin.php?action=expiring-libraries')
+  getExpiringOrganizations: async () => {
+    const response = await apiClient.get('/admin.php?action=expiring-organizations')
     return response.data
   }
 }
@@ -477,53 +487,30 @@ export const waitingListAPI = {
   }
 }
 
-// Libraries APIs
-export const librariesAPI = {
+// Organizations APIs
+export const orgsAPI = {
   getAll: async () => {
-    const response = await apiClient.get('/libraries.php')
+    const response = await apiClient.get('/organizations.php')
     return response.data
   },
   
   getById: async (id) => {
-    const response = await apiClient.get(`/libraries.php?id=${id}`)
+    const response = await apiClient.get(`/organizations.php?id=${id}`)
     return response.data
   },
   
   create: async (data) => {
-    const response = await apiClient.post('/libraries.php', data)
+    const response = await apiClient.post('/organizations.php', data)
     return response.data
   },
   
   update: async (id, data) => {
-    const response = await apiClient.put(`/libraries.php?id=${id}`, data)
+    const response = await apiClient.put(`/organizations.php?id=${id}`, data)
     return response.data
   },
   
   delete: async (id) => {
-    const response = await apiClient.delete(`/libraries.php?id=${id}`)
-    return response.data
-  }
-}
-
-// Library Owners APIs (System Admin)
-export const libraryOwnersAPI = {
-  getAll: async (params = {}) => {
-    const response = await apiClient.get('/library_owners.php', { params })
-    return response.data
-  },
-  
-  getById: async (id) => {
-    const response = await apiClient.get(`/library_owners.php?id=${id}`)
-    return response.data
-  },
-  
-  updateStatus: async (id, status) => {
-    const response = await apiClient.put('/library_owners.php', { id, status })
-    return response.data
-  },
-  
-  delete: async (id) => {
-    const response = await apiClient.delete('/library_owners.php', { data: { id } })
+    const response = await apiClient.delete(`/organizations.php?id=${id}`)
     return response.data
   }
 }

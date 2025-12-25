@@ -3,8 +3,18 @@ import { Plus, Users, Trash2, UserPlus, Phone, User as UserIcon, X } from 'lucid
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import { waitingListAPI } from '../services/api'
+import { useOrg } from '../context/OrgContext'
 
 const WaitingList = () => {
+  const { selectedOrg } = useOrg()
+  const orgType = selectedOrg?.type || 'library'
+  const isLibrary = orgType === 'library'
+  const isSeatBased = orgType === 'library' || orgType === 'tution'
+
+  const getMemberLabel = () => {
+    return isSeatBased ? 'Student' : 'Member'
+  }
+
   const [waitingList, setWaitingList] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -16,15 +26,24 @@ const WaitingList = () => {
   })
 
   useEffect(() => {
-    fetchWaitingList()
-  }, [])
+    if (selectedOrg) {
+      fetchWaitingList()
+    }
+  }, [selectedOrg])
 
   const fetchWaitingList = async () => {
     try {
       setLoading(true)
-      const response = await waitingListAPI.getAll()
+      const response = await waitingListAPI.getAll({ org_id: selectedOrg.id })
       if (response.success) {
-        setWaitingList(response.data || [])
+        // Support both new wrapped shape { waiting_list: [...] } and legacy array
+        if (response.data && Array.isArray(response.data.waiting_list)) {
+          setWaitingList(response.data.waiting_list)
+        } else if (Array.isArray(response.data)) {
+          setWaitingList(response.data)
+        } else {
+          setWaitingList(response.data || [])
+        }
       }
     } catch (error) {
       console.error('Error fetching waiting list:', error)
@@ -44,7 +63,10 @@ const WaitingList = () => {
     }
 
     try {
-      const response = await waitingListAPI.create(formData)
+      const response = await waitingListAPI.create({
+        ...formData,
+        org_id: selectedOrg.id
+      })
       if (response.success) {
         toast.success('Added to waiting list successfully')
         fetchWaitingList()
@@ -98,7 +120,7 @@ const WaitingList = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Waiting List</h1>
-          <p className="text-gray-600 mt-1">Manage prospective members waiting for seats</p>
+          <p className="text-gray-600 mt-1">Manage prospective {getMemberLabel().toLowerCase()}s waiting for {isSeatBased ? 'seats' : 'membership'}</p>
         </div>
         <button
           onClick={openModal}
@@ -115,7 +137,7 @@ const WaitingList = () => {
           <div>
             <p className="text-lg font-semibold opacity-90 mb-2">Total Waiting</p>
             <p className="text-5xl font-bold">{waitingList.length}</p>
-            <p className="text-sm opacity-75 mt-2">People waiting for seats</p>
+            <p className="text-sm opacity-75 mt-2">People waiting for {isSeatBased ? 'seats' : 'membership'}</p>
           </div>
           <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
             <Users className="w-10 h-10" />
@@ -197,7 +219,7 @@ const WaitingList = () => {
                       className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
                     >
                       <UserPlus className="w-4 h-4" />
-                      Convert to Member
+                      Convert to {getMemberLabel()}
                     </button>
                     <button
                       onClick={() => handleDelete(person.id)}

@@ -1,17 +1,35 @@
 import { useState, useEffect } from 'react'
-import { Users, CreditCard, TrendingUp, UserCheck, UserX, Clock, IndianRupee, AlertCircle, Calendar, DollarSign, Plus, IdCard, X } from 'lucide-react'
-import { membersAPI, paymentsAPI /*, attendanceAPI*/ } from '../services/api'
-import { useLibrary } from '../context/LibraryContext'
+import { Users, CreditCard, TrendingUp, UserCheck, UserX, Clock, IndianRupee, AlertCircle, Calendar, Plus, IdCard, X, Check, CheckCircle2, Sofa, Sparkles, UserMinus } from 'lucide-react'
+import { membersAPI, paymentsAPI, attendanceAPI } from '../services/api'
+import { useOrg } from '../context/OrgContext'
 import { formatCurrency, formatNumber } from '../utils/formatters'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
 const Dashboard = () => {
-  const { selectedLibrary } = useLibrary()
+  const { selectedOrg } = useOrg()
+  const orgType = selectedOrg?.type || 'library'
+  const isLibrary = orgType === 'library' || orgType === 'tution' || orgType === 'organization'
+  
+  const getOrgLabel = () => {
+    switch(orgType) {
+      case 'gym': return 'Gym'
+      case 'dance': return 'Dance Studio'
+      case 'yoga': return 'Yoga Center'
+      case 'tution': return 'Tuition Center'
+      default: return 'Library'
+    }
+  }
+
+  const getMemberLabel = () => {
+    return isLibrary || orgType === 'tution' ? 'Student' : 'Member'
+  }
+
   const [loading, setLoading] = useState(true)
   const [memberStats, setMemberStats] = useState(null)
+  const [orgInfo, setOrgInfo] = useState(null)
   const [paymentStats, setPaymentStats] = useState(null)
-  // const [attendanceStats, setAttendanceStats] = useState(null)
+  const [attendanceStats, setAttendanceStats] = useState(null)
   const [recentActivity, setRecentActivity] = useState([])
   const [monthlyCollections, setMonthlyCollections] = useState([])
   const [todayCollection, setTodayCollection] = useState(0)
@@ -23,21 +41,22 @@ const Dashboard = () => {
   const [filteredMembers, setFilteredMembers] = useState([])
 
   useEffect(() => {
-    if (selectedLibrary?.id) {
+    if (selectedOrg?.id) {
       fetchDashboardData()
     }
-  }, [selectedLibrary])
+  }, [selectedOrg])
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
       
-      const params = { library_id: selectedLibrary.id }
+      const params = { org_id: selectedOrg.id }
       
-      const [membersStatsRes, paymentsStatsRes, /* attendanceStatsRes, */ recentPayments, monthlyStats] = await Promise.all([
+      const [membersStatsRes, orgInfoRes, paymentsStatsRes, attendanceStatsRes, recentPayments, monthlyStats] = await Promise.all([
         membersAPI.getStats(params).catch(() => ({ success: false, data: null })),
+        membersAPI.getOrgInfo(params).catch(() => ({ success: false, data: null })),
         paymentsAPI.getStats(params).catch(() => ({ success: false, data: null })),
-        // attendanceAPI.getStats(params).catch(() => ({ success: false, data: null })),
+        attendanceAPI.getStats(params).catch(() => ({ success: false, data: null })),
         paymentsAPI.getAll({ ...params, limit: 5 }).catch(() => ({ success: false, data: [] })),
         paymentsAPI.getMonthlyStats(params).catch(() => ({ success: false, data: [] }))
       ])
@@ -47,15 +66,19 @@ const Dashboard = () => {
         setMemberStats(membersStatsRes.data)
       }
 
+      if (orgInfoRes.success && orgInfoRes.data) {
+        setOrgInfo(orgInfoRes.data)
+      }
+
       if (paymentsStatsRes.success && paymentsStatsRes.data) {
         setPaymentStats(paymentsStatsRes.data)
         // Extract today's collection from payment stats
         setTodayCollection(paymentsStatsRes.data.total_today || 0)
       }
 
-      // if (attendanceStatsRes.success && attendanceStatsRes.data) {
-      //   setAttendanceStats(attendanceStatsRes.data)
-      // }
+      if (attendanceStatsRes.success && attendanceStatsRes.data) {
+        setAttendanceStats(attendanceStatsRes.data)
+      }
 
       // Process monthly collections
       if (monthlyStats.success && monthlyStats.data) {
@@ -87,7 +110,7 @@ const Dashboard = () => {
     setShowMemberModal(true)
     
     try {
-      const response = await membersAPI.getAll({ library_id: selectedLibrary.id })
+      const response = await membersAPI.getAll({ org_id: selectedOrg.id })
       console.log('Members API Response:', response)
       
       let members = []
@@ -154,7 +177,7 @@ const Dashboard = () => {
     
     try {
       // Fetch payments for this specific month
-      const response = await paymentsAPI.getAll({ library_id: selectedLibrary.id })
+      const response = await paymentsAPI.getAll({ org_id: selectedOrg.id })
       console.log('Full API Response:', response)
       
       let allPayments = []
@@ -200,7 +223,7 @@ const Dashboard = () => {
 
   const getPaymentTypeColor = (type) => {
     switch (type) {
-      case 'enrollment': return 'bg-blue-100 text-blue-800'
+      case 'enrollment': return 'bg-info/10 text-info'
       case 'subscription': return 'bg-green-100 text-green-800'
       case 'renewal': return 'bg-purple-100 text-purple-800'
       case 'fine': return 'bg-red-100 text-red-800'
@@ -221,16 +244,16 @@ const Dashboard = () => {
 
   // Calculate days until expiry
   const getDaysUntilExpiry = () => {
-    console.log('Selected Library:', selectedLibrary)
-    console.log('Subscription End Date:', selectedLibrary?.subscription_end_date)
+    console.log('Selected Org:', selectedOrg)
+    console.log('Subscription End Date:', selectedOrg?.subscription_end_date)
     
-    if (!selectedLibrary?.subscription_end_date) {
+    if (!selectedOrg?.subscription_end_date) {
       console.log('No subscription_end_date found')
       return null
     }
     
     const today = new Date()
-    const endDate = new Date(selectedLibrary.subscription_end_date)
+    const endDate = new Date(selectedOrg.subscription_end_date)
     const diffTime = endDate - today
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     
@@ -274,8 +297,8 @@ const Dashboard = () => {
               </h3>
               <p className="text-sm text-yellow-700">
                 Your subscription will expire in {daysUntilExpiry} day{daysUntilExpiry !== 1 ? 's' : ''} 
-                {selectedLibrary?.subscription_end_date && (
-                  <> on {format(new Date(selectedLibrary.subscription_end_date), 'MMM dd, yyyy')}</>
+                {selectedOrg?.subscription_end_date && (
+                  <> on {format(new Date(selectedOrg.subscription_end_date), 'MMM dd, yyyy')}</>
                 )}. 
                 Please contact the administrator to renew.
               </p>
@@ -288,15 +311,15 @@ const Dashboard = () => {
       <div className="bg-gradient-primary rounded-xl shadow-lg p-6 sm:p-8 text-white">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Welcome to FeeTrack! 👋</h1>
-            <p className="text-blue-100 text-sm sm:text-base">Manage your library efficiently with our comprehensive dashboard</p>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Welcome to {selectedOrg?.name || 'FeeTrack'}! 👋</h1>
+            <p className="text-white/80 text-sm sm:text-base">Manage your {getOrgLabel()} efficiently with our comprehensive dashboard</p>
           </div>
           <a
             href="/members"
             className="btn bg-white text-primary hover:bg-gray-100 w-full sm:w-auto text-sm font-semibold inline-flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
-            Add New Member
+            Add New {getMemberLabel()}
           </a>
         </div>
       </div>
@@ -305,22 +328,22 @@ const Dashboard = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Here's your library overview</p>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Here's your {getOrgLabel()} overview</p>
         </div>
       </div>
 
       {/* Member Stats */}
       {memberStats && (
         <div>
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Member Statistics</h2>
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">{getMemberLabel()} Statistics</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <button
               onClick={() => handleMemberStatClick('total')}
-              className="stats-card stats-card-primary hover:shadow-lg hover:border-blue-300 transition-all cursor-pointer text-left"
+              className="stats-card stats-card-primary hover:shadow-lg hover:border-primary/30 transition-all cursor-pointer text-left"
             >
               <div className="stats-card-header">
                 <div className="stats-card-content">
-                  <p className="stats-card-label">Total Members</p>
+                  <p className="stats-card-label">Total {getMemberLabel()}s</p>
                   <p className="stats-card-value">
                     {memberStats.total_members || 0}
                   </p>
@@ -337,7 +360,7 @@ const Dashboard = () => {
             >
               <div className="stats-card-header">
                 <div className="stats-card-content">
-                  <p className="stats-card-label">Active Members</p>
+                  <p className="stats-card-label">Active {getMemberLabel()}s</p>
                   <p className="stats-card-value">
                     {memberStats.active_members || 0}
                   </p>
@@ -354,7 +377,7 @@ const Dashboard = () => {
             >
               <div className="stats-card-header">
                 <div className="stats-card-content">
-                  <p className="stats-card-label">Expired Members</p>
+                  <p className="stats-card-label">Expired {getMemberLabel()}s</p>
                   <p className="stats-card-value">
                     {memberStats.expired_members || 0}
                   </p>
@@ -385,6 +408,116 @@ const Dashboard = () => {
         </div>
       )}
 
+      {/* Seat Utilization - Only for Libraries and Tuition Centers */}
+      {isLibrary && orgInfo && (
+        <div>
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Seat Utilization</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white rounded-xl shadow-sm border-2 border-primary/20 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Seats</p>
+                  <p className="text-3xl font-bold text-primary mt-1">{orgInfo.seat_limit || 0}</p>
+                </div>
+                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <Sofa className="w-6 h-6 text-primary" />
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Occupied</p>
+                  <p className="text-3xl font-bold text-green-600 mt-1">{orgInfo.seats_occupied || 0}</p>
+                </div>
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <UserCheck className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Available</p>
+                  <p className="text-3xl font-bold text-blue-600 mt-1">{orgInfo.seats_available || 0}</p>
+                </div>
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Progress Bar */}
+          <div className="mt-4 bg-white rounded-xl shadow-sm border-2 border-gray-200 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-gray-700">Occupancy Rate</span>
+              <span className="text-sm font-bold text-primary">{orgInfo.seat_utilization_percentage}%</span>
+            </div>
+            <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden">
+              <div 
+                className="bg-primary h-full transition-all duration-500" 
+                style={{ width: `${orgInfo.seat_utilization_percentage}%` }}
+              ></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Collection Tracking */}  
+      <div>
+        <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Collection Tracking</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Today's Collection */}
+          <div className="bg-gradient-success rounded-xl shadow-lg p-8 text-white">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold opacity-90">Today Collection</h3>
+              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                <IndianRupee className="w-6 h-6" />
+              </div>
+            </div>
+            <p className="text-5xl font-bold mb-2">{formatCurrency(todayCollection)}</p>
+            <p className="text-sm opacity-75">{format(new Date(), 'EEEE, MMMM dd, yyyy')}</p>
+          </div>
+
+          {/* Monthly Collections */}
+          <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Collections</h3>
+              <div className="space-y-3">
+              {monthlyCollections.length > 0 ? (
+                monthlyCollections.map((month, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleMonthClick(month)}
+                    className="w-full flex items-center justify-between p-4 bg-gradient-muted rounded-lg border border-primary/20 hover:border-primary/40 transition-all cursor-pointer"
+                  >
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {month.month_name || `Month ${idx + 1}`}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Year {month.year || new Date().getFullYear()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-primary">
+                        {formatCurrency(month.total || 0)}
+                      </p>
+                      <p className="text-xs text-gray-500">{month.count || 0} payments</p>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="text-center py-6 text-gray-500">
+                  <Calendar className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm">No collection data available</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Payment Stats */}
       {paymentStats && (
         <div>
@@ -400,7 +533,7 @@ const Dashboard = () => {
                   <p className="text-xs text-gray-500 mt-1">This year</p>
                 </div>
                 <div className="stats-card-icon">
-                  <DollarSign className="w-6 h-6" />
+                  <IndianRupee className="w-6 h-6" />
                 </div>
               </div>
             </div>
@@ -453,123 +586,69 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Collection Tracking */}  
-      <div>
-        <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Collection Tracking</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Today's Collection */}
-          <div className="bg-gradient-success rounded-xl shadow-lg p-8 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold opacity-90">Today Collection</h3>
-              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                <IndianRupee className="w-6 h-6" />
-              </div>
-            </div>
-            <p className="text-5xl font-bold mb-2">{formatCurrency(todayCollection)}</p>
-            <p className="text-sm opacity-75">{format(new Date(), 'EEEE, MMMM dd, yyyy')}</p>
-          </div>
-
-          {/* Monthly Collections */}
-          <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Collections</h3>
-              <div className="space-y-3">
-              {monthlyCollections.length > 0 ? (
-                monthlyCollections.map((month, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleMonthClick(month)}
-                    className="w-full flex items-center justify-between p-4 bg-gradient-muted rounded-lg border border-primary/20 hover:border-primary/40 transition-all cursor-pointer"
-                  >
-                    <div className="text-left">
-                      <p className="text-sm font-semibold text-gray-900">
-                        {month.month_name || `Month ${idx + 1}`}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Year {month.year || new Date().getFullYear()}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-indigo-600">
-                        {formatCurrency(month.total || 0)}
-                      </p>
-                      <p className="text-xs text-gray-500">{month.count || 0} payments</p>
-                    </div>
-                  </button>
-                ))
-              ) : (
-                <div className="text-center py-6 text-gray-500">
-                  <Calendar className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm">No collection data available</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Attendance Stats */}
-      {/* {attendanceStats && (
+      {attendanceStats && (
         <div>
           <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Attendance Overview</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">Today Present</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-green-600 mt-1 sm:mt-2">
+            <div className="stats-card stats-card-success">
+              <div className="stats-card-header">
+                <div className="stats-card-content">
+                  <p className="stats-card-label">Today Present</p>
+                  <p className="stats-card-value">
                     {attendanceStats.today_present || 0}
                   </p>
                 </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <UserCheck className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+                <div className="stats-card-icon">
+                  <UserCheck className="w-6 h-6" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-red-200 p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">Today Absent</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-red-600 mt-1 sm:mt-2">
+            <div className="stats-card stats-card-danger">
+              <div className="stats-card-header">
+                <div className="stats-card-content">
+                  <p className="stats-card-label">Today Absent</p>
+                  <p className="stats-card-value">
                     {attendanceStats.today_absent || 0}
                   </p>
                 </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                  <UserX className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
+                <div className="stats-card-icon">
+                  <UserX className="w-6 h-6" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">This Month</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-blue-600 mt-1 sm:mt-2">
+            <div className="stats-card stats-card-primary">
+              <div className="stats-card-header">
+                <div className="stats-card-content">
+                  <p className="stats-card-label">This Month</p>
+                  <p className="stats-card-value">
                     {attendanceStats.month_count || 0}
                   </p>
                 </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+                <div className="stats-card-icon">
+                  <Calendar className="w-6 h-6" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">Avg Rate</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-purple-600 mt-1 sm:mt-2">
+            <div className="stats-card stats-card-info">
+              <div className="stats-card-header">
+                <div className="stats-card-content">
+                  <p className="stats-card-label">Avg Rate</p>
+                  <p className="stats-card-value">
                     {attendanceStats.average_rate ? `${attendanceStats.average_rate}%` : '0%'}
                   </p>
                 </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+                <div className="stats-card-icon">
+                  <TrendingUp className="w-6 h-6" />
                 </div>
               </div>
             </div>
           </div>
         </div>
-      )} */}
+      )}
 
       {/* Quick Actions - Horizontal Scroll */}
       <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
@@ -650,72 +729,67 @@ const Dashboard = () => {
 
       {/* Monthly Payment Details Modal */}
       {showMonthModal && selectedMonth && (
-        <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in duration-200">
             {/* Modal Header */}
-            <div className="p-6 border-b border-gray-200 flex items-center justify-between bg-gradient-primary text-white">
-              <div>
-                <h2 className="text-2xl font-bold">{selectedMonth.month_name}</h2>
-                <p className="text-sm text-white/80 mt-1">Payment Details - Year {selectedMonth.year}</p>
-              </div>
+            <div className="p-4 bg-primary text-white relative">
+              <h2 className="text-2xl font-bold">{selectedMonth.month_name}</h2>
+              <p className="text-white/90 text-sm font-medium mt-0.5">Payment Details - Year {selectedMonth.year}</p>
               <button
                 onClick={() => setShowMonthModal(false)}
-                className="text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
             {/* Modal Body - Scrollable */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-3 bg-gray-50/50">
               {monthPayments.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <CreditCard className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-lg font-medium">No payments found</p>
-                  <p className="text-sm mt-2">No payment records for this month</p>
+                <div className="text-center py-8 text-gray-500">
+                  <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-base font-medium">No payments found</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {monthPayments.map((payment, idx) => (
-                    <div key={payment.id} className="p-4 bg-gradient-muted rounded-lg border border-gray-200 hover:border-primary/40 transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
-                              {idx + 1}
-                            </span>
-                            <div>
-                              <p className="font-semibold text-gray-900">{payment.member_name}</p>
-                              <p className="text-xs text-gray-500">ID: {payment.member_id}</p>
-                            </div>
+                    <div key={payment.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                      {/* Member Info & Amount */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold">
+                            {idx + 1}
                           </div>
-                          <div className="ml-10 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                            <div>
-                              <p className="text-gray-500">Date</p>
-                              <p className="font-medium text-gray-900">
-                                {payment.payment_date ? format(new Date(payment.payment_date), 'MMM dd, yyyy') : 'N/A'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Method</p>
-                              <p className="font-medium text-gray-900 capitalize">{payment.payment_method}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Type</p>
-                              <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${getPaymentTypeColor(payment.payment_type)}`}>
-                                {payment.payment_type}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Status</p>
-                              <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${payment.status === 'completed' ? 'bg-success-light text-success-dark' : 'bg-warning-light text-warning-dark'}`}>
-                                {payment.status}
-                              </span>
-                            </div>
+                          <div>
+                            <h3 className="text-base font-bold text-gray-900">{payment.member_name}</h3>
+                            <p className="text-primary text-xs font-semibold capitalize">{payment.payment_method}</p>
                           </div>
                         </div>
-                        <div className="text-right ml-4">
-                          <p className="text-2xl font-bold text-primary">{formatCurrency(payment.amount)}</p>
+                        <div className="text-right">
+                          <p className="text-xl font-black text-primary">
+                            {formatCurrency(payment.amount)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Details Box */}
+                      <div className="bg-gray-50 rounded-xl p-3 space-y-2 border border-gray-100">
+                        <div className="flex items-center gap-2 text-gray-600 text-sm">
+                          <Calendar className="w-4 h-4 text-gray-400" />
+                          <span className="font-medium">
+                            {payment.payment_date ? format(new Date(payment.payment_date), 'dd MMM yyyy') : 'N/A'}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-gray-600 text-sm">
+                            <CheckCircle2 className="w-4 h-4 text-primary" />
+                            <span className="font-medium capitalize">{payment.payment_method}</span>
+                          </div>
+                          <div className="flex items-center gap-1 bg-green-100 text-[#15803d] px-2 py-0.5 rounded-full text-[10px] font-bold">
+                            <Check className="w-3 h-3" />
+                            <span className="capitalize">{payment.status}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -724,24 +798,19 @@ const Dashboard = () => {
               )}
             </div>
 
-            {/* Modal Footer - Totals */}
-            <div className="p-6 border-t border-gray-200 bg-gradient-muted">
-              <div className="flex items-center justify-between">
+            {/* Modal Footer */}
+            <div className="p-4 bg-gray-50 border-t border-gray-100">
+              <div className="flex items-center justify-between mb-2">
                 <div>
-                  <p className="text-sm text-gray-600">Total Payments</p>
-                  <p className="text-lg font-bold text-gray-900">{monthPayments.length} transactions</p>
+                  <p className="text-gray-500 text-xs font-medium">Total Payments</p>
+                  <p className="text-lg font-bold text-gray-900">{monthPayments.length} transaction{monthPayments.length !== 1 ? 's' : ''}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-gray-600">Total Amount</p>
-                  <p className="text-3xl font-bold text-primary">
+                  <p className="text-gray-500 text-xs font-medium">Total Amount</p>
+                  <p className="text-2xl font-black text-primary">
                     {formatCurrency(monthPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0))}
                   </p>
                 </div>
-              </div>
-              <div className="mt-4 pt-4 border-t border-gray-300">
-                <p className="text-center text-sm text-gray-500">
-                  {selectedMonth.month_name} - Year {selectedMonth.year}
-                </p>
               </div>
             </div>
           </div>
@@ -751,67 +820,87 @@ const Dashboard = () => {
       {/* Member Stats Modal */}
       {showMemberModal && selectedMemberType && (
         <div className="fixed top-0 left-0 right-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 md:bottom-0" style={{ bottom: 'var(--bottom-nav-height, 72px)' }}>
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
             {/* Modal Header */}
-            <div className="p-6 border-b border-gray-200 flex items-center justify-between bg-gradient-primary text-white">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gradient-primary text-white">
               <div>
-                <h2 className="text-2xl font-bold">
-                  {selectedMemberType === 'total' && 'All Members'}
-                  {selectedMemberType === 'active' && 'Active Members'}
-                  {selectedMemberType === 'expired' && 'Expired Members'}
-                  {selectedMemberType === 'expiring' && 'Members Expiring Soon'}
+                <h2 className="text-xl font-bold">
+                  {selectedMemberType === 'total' && `All ${getMemberLabel()}s`}
+                  {selectedMemberType === 'active' && `Active ${getMemberLabel()}s`}
+                  {selectedMemberType === 'expired' && `Expired ${getMemberLabel()}s`}
+                  {selectedMemberType === 'expiring' && `${getMemberLabel()}s Expiring Soon`}
                 </h2>
-                <p className="text-sm text-white/80 mt-1">{filteredMembers.length} members found</p>
+                <p className="text-xs text-white/80 mt-0.5">{filteredMembers.length} {getMemberLabel().toLowerCase()}s found</p>
               </div>
               <button
                 onClick={() => setShowMemberModal(false)}
                 className="text-white/80 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Body - Scrollable */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-gray-50/50">
               {filteredMembers.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-lg font-medium">No members found</p>
-                  <p className="text-sm mt-2">No members match this criteria</p>
+                <div className="text-center py-10 text-gray-500">
+                  <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-base font-medium">No members found</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {filteredMembers.map((member) => (
-                    <div key={member.id} className="p-4 bg-gradient-muted rounded-lg border border-gray-200 hover:border-primary/40 transition-colors">
+                    <div key={member.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group">
                       <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 bg-gradient-primary text-white rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0">
+                        <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center text-lg font-black flex-shrink-0 group-hover:scale-110 transition-transform">
                           {member.name?.charAt(0).toUpperCase() || 'M'}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 truncate">{member.name}</p>
-                          <p className="text-xs text-gray-500">ID: {member.id}</p>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${
-                              member.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-black text-gray-900 truncate text-base">{member.name}</p>
+                            <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-lg ${
+                              member.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                             }`}>
                               {member.status}
                             </span>
-                            {member.plan_status && (
-                              <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${
-                                member.plan_status === 'active' ? 'bg-blue-100 text-blue-800' : 
-                                member.plan_status === 'expiring_soon' ? 'bg-yellow-100 text-yellow-800' : 
-                                'bg-red-100 text-red-800'
+                          </div>
+                          
+                          <div className="flex items-center gap-1.5 mt-0.5 text-gray-400">
+                            <IdCard className="w-3 h-3" />
+                            <span className="text-[10px] font-bold tracking-wider uppercase">
+                              {member.member_code || `MEM-${member.id}`}
+                            </span>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <div className="bg-gray-50 p-2 rounded-lg">
+                              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Phone</p>
+                              <p className="text-xs font-black text-gray-900 truncate">{member.phone}</p>
+                            </div>
+                            <div className="bg-gray-50 p-2 rounded-lg">
+                              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Expiry</p>
+                              <p className={`text-xs font-black ${member.plan_status === 'expired' ? 'text-red-500' : 'text-gray-900'}`}>
+                                {member.plan_end_date ? format(new Date(member.plan_end_date), 'dd MMM, yy') : 'N/A'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {member.plan_status && (
+                            <div className="mt-2">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full ${
+                                member.plan_status === 'active' ? 'bg-primary/10 text-primary' : 
+                                member.plan_status === 'expiring_soon' ? 'bg-yellow-100 text-yellow-700' : 
+                                'bg-red-100 text-red-700'
                               }`}>
-                                {member.plan_status}
+                                <div className={`w-1 h-1 rounded-full ${
+                                  member.plan_status === 'active' ? 'bg-primary' : 
+                                  member.plan_status === 'expiring_soon' ? 'bg-yellow-500' : 
+                                  'bg-red-500'
+                                }`} />
+                                {member.plan_status.replace('_', ' ')}
                               </span>
-                            )}
-                          </div>
-                          <div className="mt-2 text-xs text-gray-600">
-                            <p>Phone: {member.phone}</p>
-                            {member.plan_end_date && (
-                              <p>Plan Ends: {format(new Date(member.plan_end_date), 'MMM dd, yyyy')}</p>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

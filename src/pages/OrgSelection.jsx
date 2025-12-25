@@ -1,15 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  Building2, Plus, ArrowRight, Search, MapPin, Phone, Mail, Users, LogOut,
-  Dumbbell, Music, Flower2, GraduationCap, BookOpen
-} from 'lucide-react'
+import { Building2, Plus, ArrowRight, Search, MapPin, Phone, Mail, Users, LogOut } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useOrg } from '../context/OrgContext'
 import { useAuth } from '../context/AuthContext'
 import { orgsAPI } from '../services/api'
 
-export default function organizationSelection() {
+export default function OrgSelection() {
   const navigate = useNavigate()
   const { selectOrg, setOrgs } = useOrg()
   const { user, logout } = useAuth()
@@ -60,7 +57,7 @@ export default function organizationSelection() {
     navigate('/dashboard')
   }
 
-  const handleAddorganization = async (e) => {
+  const handleAddOrg = async (e) => {
     e.preventDefault()
     try {
       const initialCount = orgs.length
@@ -197,11 +194,7 @@ export default function organizationSelection() {
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="w-14 h-14 bg-primary/10 group-hover:bg-primary/15 rounded-xl flex items-center justify-center transition-all duration-300 ring-4 ring-primary/10">
-                      {org.type === 'gym' ? <Dumbbell className="w-7 h-7 text-primary" /> :
-                       org.type === 'dance' ? <Music className="w-7 h-7 text-primary" /> :
-                       org.type === 'yoga' ? <Flower2 className="w-7 h-7 text-primary" /> :
-                       org.type === 'tution' ? <GraduationCap className="w-7 h-7 text-primary" /> :
-                       <BookOpen className="w-7 h-7 text-primary" />}
+                      <Building2 className="w-7 h-7 text-primary" />
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                       org.status === 'active' ? 'bg-green-100 text-green-700 ring-2 ring-green-200' : 'bg-gray-100 text-gray-700'
@@ -268,7 +261,7 @@ export default function organizationSelection() {
               </div>
             </div>
             
-            <form onSubmit={handleAddorganization} className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+            <form onSubmit={handleAddOrg} className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">

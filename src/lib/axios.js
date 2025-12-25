@@ -15,49 +15,60 @@ function getUserRole() {
     const raw = localStorage.getItem('user')
     if (!raw) return null
     const parsed = JSON.parse(raw)
-    return parsed?.role || null
+    let role = parsed?.role || null
+    
+    // Map legacy roles to new roles for frontend logic
+    if (role === 'library_owner' || role === 'gym_owner') {
+      role = 'organization_owner'
+    }
+    
+    return role
   } catch {
     return null
   }
 }
 
-function getSelectedLibraryId() {
+function getSelectedOrgId() {
   try {
-    const directId = localStorage.getItem('selectedLibraryId')
-    if (directId) return Number(directId)
+    // Primary: new org selection
+    const directOrgId = localStorage.getItem('selectedOrgId')
+    if (directOrgId) return Number(directOrgId)
 
-    const rawData = localStorage.getItem('selectedLibraryData')
-    if (!rawData) return null
-    const parsed = JSON.parse(rawData)
-    return parsed?.id ? Number(parsed.id) : null
+    const rawOrgData = localStorage.getItem('selectedOrgData')
+    if (rawOrgData) {
+      const parsed = JSON.parse(rawOrgData)
+      if (parsed?.id) return Number(parsed.id)
+    }
   } catch {
-    return null
+    // Ignore JSON parse errors and fall through
   }
+  return null
 }
 
-function shouldInjectLibraryId(config) {
+function shouldInjectOrgId(config) {
   const url = (config?.url || '').toLowerCase()
   // Never inject for auth/register/public endpoints.
   if (url.includes('auth.php') || url.includes('register.php') || url.includes('public-plans.php')) return false
-  return getUserRole() === 'library_owner'
+  // Inject for owners (and members carrying org selection locally)
+  return ['organization_owner', 'member'].includes(getUserRole())
 }
 
-function injectLibraryId(config) {
-  const libraryId = getSelectedLibraryId()
-  if (!libraryId) return config
+function injectOrgId(config) {
+  const orgId = getSelectedOrgId()
+  if (!orgId) return config
 
   config.params = config.params || {}
-  if (!config.params.library_id) {
-    config.params.library_id = libraryId
+  if (!config.params.org_id) {
+    config.params.org_id = orgId
   }
 
-  // For POST/PUT/PATCH/DELETE bodies, add library_id unless already present.
+  // For POST/PUT/PATCH/DELETE bodies, add org_id unless already present.
   const method = (config.method || 'get').toLowerCase()
   if (['post', 'put', 'patch', 'delete'].includes(method)) {
     if (config.data && typeof config.data === 'object' && !Array.isArray(config.data)) {
-      if (!config.data.library_id) {
-        config.data = { ...config.data, library_id: libraryId }
-      }
+      const nextData = { ...config.data }
+      if (!nextData.org_id) nextData.org_id = orgId
+      config.data = nextData
     }
   }
 
@@ -71,8 +82,8 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    if (shouldInjectLibraryId(config)) {
-      config = injectLibraryId(config)
+    if (shouldInjectOrgId(config)) {
+      config = injectOrgId(config)
     }
     return config
   },

@@ -3,8 +3,15 @@ import { attendanceAPI, membersAPI } from '../services/api'
 import { UserCheck, UserX, Search, Calendar, Edit, Trash2, Clock, Users, TrendingUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
+import { useOrg } from '../context/OrgContext'
 
 const Attendance = () => {
+  const { selectedOrg } = useOrg()
+  const orgType = selectedOrg?.type || 'library'
+  const isLibrary = orgType === 'library' || orgType === 'organization'
+  
+  const getMemberLabel = () => isLibrary || orgType === 'tution' ? 'Student' : 'Member'
+
   const [attendance, setAttendance] = useState([])
   const [members, setMembers] = useState([])
   const [stats, setStats] = useState(null)
@@ -15,25 +22,31 @@ const Attendance = () => {
   const [viewMode, setViewMode] = useState('grid') // 'grid' or 'table'
 
   useEffect(() => {
-    fetchData()
-  }, [selectedDate])
+    if (selectedOrg) {
+      fetchData()
+    }
+  }, [selectedDate, selectedOrg])
 
   const fetchData = async () => {
     try {
       setLoading(true)
       const [attendanceRes, membersRes, statsRes] = await Promise.all([
         attendanceAPI.getAll({ 
+          org_id: selectedOrg.id,
           from_date: selectedDate, 
           to_date: selectedDate 
         }).catch(err => {
           console.error('Attendance fetch error:', err)
           return { success: false, data: [] }
         }),
-        membersAPI.getAll({ status: 'active' }).catch(err => {
+        membersAPI.getAll({ 
+          org_id: selectedOrg.id,
+          status: 'active' 
+        }).catch(err => {
           console.error('Members fetch error:', err)
           return { success: false, data: [] }
         }),
-        attendanceAPI.getStats().catch(err => {
+        attendanceAPI.getStats(selectedOrg.id).catch(err => {
           console.error('Stats fetch error:', err)
           return { success: false, data: null }
         })
@@ -100,6 +113,7 @@ const Attendance = () => {
     e.preventDefault()
     try {
       await attendanceAPI.mark({
+        org_id: selectedOrg.id,
         member_id: selectedMember,
         date: selectedDate,
         status: 'present',
@@ -139,7 +153,7 @@ const Attendance = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Attendance</h1>
-          <p className="text-gray-600 mt-1">Track member attendance</p>
+          <p className="text-gray-600 mt-1">Track {getMemberLabel().toLowerCase()} attendance</p>
         </div>
         <button onClick={() => setShowMarkModal(true)} className="btn btn-primary flex items-center gap-2">
           <UserCheck className="w-5 h-5" />
@@ -262,8 +276,8 @@ const Attendance = () => {
         ) : members.length === 0 ? (
           <div className="text-center py-12">
             <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Active Members</h3>
-            <p className="text-gray-600">No active members found to track attendance</p>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Active {getMemberLabel()}s</h3>
+            <p className="text-gray-600">No active {getMemberLabel().toLowerCase()}s found to track attendance</p>
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -307,7 +321,7 @@ const Attendance = () => {
             <table className="w-full">
               <thead className="bg-gray-50 border-b-2 border-gray-200">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Member</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">{getMemberLabel()}</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Code</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Time</th>
@@ -382,18 +396,18 @@ const Attendance = () => {
             
             <form onSubmit={handleMarkAttendance} className="space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Select Member *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Select {getMemberLabel()} *</label>
                 <select
                   value={selectedMember}
                   onChange={(e) => setSelectedMember(e.target.value)}
                   className="input"
                   required
                 >
-                  <option value="">Choose a member</option>
+                  <option value="">Choose a {getMemberLabel().toLowerCase()}</option>
                   {members.length === 0 ? (
-                    <option value="" disabled>No members available</option>
+                    <option value="" disabled>No {getMemberLabel().toLowerCase()}s available</option>
                   ) : members.filter(m => !isMarked(m.id)).length === 0 ? (
-                    <option value="" disabled>All members already marked</option>
+                    <option value="" disabled>All {getMemberLabel().toLowerCase()}s already marked</option>
                   ) : (
                     members.filter(m => !isMarked(m.id)).map((member) => (
                       <option key={member.id} value={member.id}>
@@ -404,12 +418,12 @@ const Attendance = () => {
                 </select>
                 {members.length > 0 && (
                   <p className="text-xs text-gray-500 mt-1">
-                    {members.filter(m => !isMarked(m.id)).length} of {members.length} members available
+                    {members.filter(m => !isMarked(m.id)).length} of {members.length} {getMemberLabel().toLowerCase()}s available
                   </p>
                 )}
               </div>
 
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+              <div className="bg-primary/10 border-2 border-primary/20 rounded-lg p-4 text-sm text-primary">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
                   <span>Marking attendance for: <strong>{format(new Date(selectedDate), 'dd MMMM yyyy')}</strong></span>

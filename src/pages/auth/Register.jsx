@@ -7,7 +7,11 @@ import toast from 'react-hot-toast'
 
 const Register = () => {
   const { register: registerUser } = useAuth()
-  const { register, handleSubmit, watch, formState: { errors } } = useForm()
+  const { register, handleSubmit, watch, formState: { errors } } = useForm({
+    defaultValues: {
+      type: 'library'
+    }
+  })
   const [isLoading, setIsLoading] = useState(false)
   const [step, setStep] = useState(1)
 
@@ -44,7 +48,7 @@ const Register = () => {
             <BookmarkCheck className="w-12 h-12 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
-          <p className="text-gray-600">Register your library with FeeTrack</p>
+          <p className="text-gray-600">Register your organization with FeeTrack</p>
         </div>
 
         {/* Progress Steps */}
@@ -67,7 +71,7 @@ const Register = () => {
           </div>
           <div className="flex justify-between text-sm">
             <span className={step >= 1 ? 'text-primary font-semibold' : 'text-gray-500'}>Personal</span>
-            <span className={step >= 2 ? 'text-primary font-semibold' : 'text-gray-500'}>Library</span>
+            <span className={step >= 2 ? 'text-primary font-semibold' : 'text-gray-500'}>Organization</span>
             <span className={step >= 3 ? 'text-primary font-semibold' : 'text-gray-500'}>Subscription</span>
           </div>
         </div>
@@ -108,7 +112,7 @@ const Register = () => {
                         }
                       })}
                       className="input pl-10"
-                      placeholder="john@library.com"
+                      placeholder="john@organization.com"
                     />
                   </div>
                   {errors.email && <p className="text-red-600 text-sm mt-1">{errors.email.message}</p>}
@@ -173,43 +177,44 @@ const Register = () => {
               </div>
             )}
 
-            {/* Step 2: Library Info */}
+            {/* Step 2: Organization Info */}
             {step === 2 && (
               <div className="space-y-4 slide-in">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Library Information</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Organization Information</h3>
                 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Library Name *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Organization Name *</label>
                   <div className="relative">
                     <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
                     <input
                       type="text"
-                      {...register('libraryName', { required: 'Library name is required' })}
+                      {...register('name', { required: 'Organization name is required' })}
                       className="input pl-10"
-                      placeholder="City Central Library"
+                      placeholder="City Central Organization"
                     />
                   </div>
-                  {errors.libraryName && <p className="text-red-600 text-sm mt-1">{errors.libraryName.message}</p>}
+                  {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name.message}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Library Code *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Organization Code *</label>
                   <input
                     type="text"
-                    {...register('libraryCode', { required: 'Library code is required' })}
+                    {...register('code', { required: 'Organization code is required' })}
                     className="input"
-                    placeholder="CCL001"
+                    placeholder="ORG001"
                   />
-                  {errors.libraryCode && <p className="text-red-600 text-sm mt-1">{errors.libraryCode.message}</p>}
+                  {errors.code && <p className="text-red-600 text-sm mt-1">{errors.code.message}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Library Type *</label>
-                  <select {...register('libraryType')} className="input">
-                    <option value="public">Public Library</option>
-                    <option value="private">Private Library</option>
-                    <option value="academic">Academic Library</option>
-                    <option value="reading_room">Reading Room</option>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Organization Type *</label>
+                  <select {...register('type')} className="input">
+                    <option value="library">Library</option>
+                    <option value="gym">Gym</option>
+                    <option value="dance">Dance Studio</option>
+                    <option value="yoga">Yoga Center</option>
+                    <option value="tution">Tuition Center</option>
                   </select>
                 </div>
 
@@ -324,8 +329,8 @@ const Register = () => {
                   />
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded p-4 mt-4">
-                  <p className="text-sm text-blue-800">
+                <div className="bg-primary/10 border border-primary/20 rounded p-4 mt-4">
+                  <p className="text-sm text-primary">
                     <strong>Note:</strong> You can start with a free trial for 14 days. No payment required now.
                   </p>
                 </div>

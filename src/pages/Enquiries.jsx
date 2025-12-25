@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { enquiriesAPI, plansAPI } from '../services/api'
-import { useLibrary } from '../context/LibraryContext'
+import { useOrg } from '../context/OrgContext'
 import { Mail, MessageSquare, Plus, Edit, Trash2, Phone, Calendar, User, TrendingUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const Enquiries = () => {
-  const { selectedLibrary } = useLibrary()
+  const { selectedOrg } = useOrg()
   const [enquiries, setEnquiries] = useState([])
   const [plans, setPlans] = useState([])
   const [stats, setStats] = useState(null)
@@ -25,18 +25,18 @@ const Enquiries = () => {
   })
 
   useEffect(() => {
-    if (selectedLibrary?.id) {
+    if (selectedOrg?.id) {
       fetchData()
     }
-  }, [selectedLibrary])
+  }, [selectedOrg])
 
   const fetchData = async () => {
     try {
       setLoading(true)
       const [enquiriesRes, plansRes, statsRes] = await Promise.all([
-        enquiriesAPI.getAll({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] })),
-        plansAPI.getAll({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: [] })),
-        enquiriesAPI.getStats({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: null }))
+        enquiriesAPI.getAll({ org_id: selectedOrg.id }).catch(() => ({ success: false, data: [] })),
+        plansAPI.getAll({ org_id: selectedOrg.id }).catch(() => ({ success: false, data: [] })),
+        enquiriesAPI.getStats({ org_id: selectedOrg.id }).catch(() => ({ success: false, data: null }))
       ])
       
       let enquiriesList = []
@@ -76,7 +76,7 @@ const Enquiries = () => {
         await enquiriesAPI.update(currentEnquiry.id, formData)
         toast.success('Enquiry updated successfully')
       } else {
-        await enquiriesAPI.create({ ...formData, library_id: selectedLibrary.id })
+        await enquiriesAPI.create({ ...formData, org_id: selectedOrg.id })
         toast.success('Enquiry created successfully')
       }
       fetchData()
@@ -135,7 +135,7 @@ const Enquiries = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'new': return 'bg-blue-100 text-blue-800'
+      case 'new': return 'bg-info/10 text-info'
       case 'contacted': return 'bg-yellow-100 text-yellow-800'
       case 'follow_up': return 'bg-purple-100 text-purple-800'
       case 'converted': return 'bg-green-100 text-green-800'
@@ -212,7 +212,7 @@ const Enquiries = () => {
       )}
 
       {/* Enquiries List */}
-      <div className="bg-white rounded-lg shadow-sm border">
+      <div className="bg-transparent">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
@@ -221,69 +221,71 @@ const Enquiries = () => {
             </div>
           </div>
         ) : enquiries.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
+          <div className="bg-white rounded-xl shadow-sm border p-12 text-center text-gray-500">
             <Mail className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <p className="text-lg font-medium mb-2">No enquiries yet</p>
             <p className="text-sm">Add your first enquiry to get started</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Name</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 hidden md:table-cell">Contact</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 hidden lg:table-cell">Message</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 hidden sm:table-cell">Date</th>
-                  <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {enquiries.map((enq) => (
-                  <tr key={enq.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      <div className="font-medium">{enq.full_name}</div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 hidden md:table-cell">
-                      <div className="flex flex-col gap-1">
-                        {enq.phone && <div className="flex items-center gap-1"><Phone className="w-3 h-3" />{enq.phone}</div>}
-                        {enq.email && <div className="flex items-center gap-1"><Mail className="w-3 h-3" />{enq.email}</div>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 hidden lg:table-cell">
-                      <div className="max-w-xs truncate">{enq.message || '-'}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-2 py-1 text-xs font-medium rounded capitalize ${getStatusColor(enq.status)}`}>
+          <div className="grid grid-cols-1 gap-4">
+            {enquiries.map((enq) => (
+              <div key={enq.id} className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5 hover:shadow-md transition-all duration-200">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <h3 className="font-bold text-gray-900 text-lg truncate">{enq.full_name}</h3>
+                      <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${getStatusColor(enq.status)}`}>
                         {enq.status?.replace('_', ' ')}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 hidden sm:table-cell">
-                      {new Date(enq.enquiry_date).toLocaleDateString('en-IN')}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => openModal(enq)}
-                          className="p-1 text-blue-600 hover:text-blue-800"
-                          title="Edit"
-                        >
-                          <Edit className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(enq.id)}
-                          className="p-1 text-red-600 hover:text-red-800"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm text-gray-600 mb-3">
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-gray-400" />
+                        <a href={`tel:${enq.phone}`} className="hover:text-primary transition-colors">{enq.phone}</a>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      {enq.email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-gray-400" />
+                          <span className="truncate">{enq.email}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <span>{new Date(enq.enquiry_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                      </div>
+                      {enq.follow_up_date && (
+                        <div className="flex items-center gap-2 text-orange-600 font-medium">
+                          <Calendar className="w-4 h-4" />
+                          <span>Follow-up: {new Date(enq.follow_up_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {enq.message && (
+                      <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600 italic border-l-4 border-gray-200">
+                        "{enq.message}"
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => openModal(enq)}
+                      className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors border border-gray-100"
+                    >
+                      <Edit className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(enq.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-gray-100"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

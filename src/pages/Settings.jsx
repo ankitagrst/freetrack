@@ -1,24 +1,25 @@
 import { useState, useEffect } from 'react'
 import { settingsAPI } from '../services/api'
-import { useLibrary } from '../context/LibraryContext'
+import { useOrg } from '../context/OrgContext'
 import { Save, Building, Mail, Bell, Lock, CreditCard, Phone, User, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 
 const Settings = () => {
   const { user } = useAuth()
-  const { selectedLibrary } = useLibrary()
+  const { selectedOrg } = useOrg()
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('profile')
   const [formData, setFormData] = useState({
-    library_name: '',
+    name: '',
     address: '',
     city: '',
     state: '',
     pincode: '',
     phone: '',
     email: '',
-    gstin: ''
+    gstin: '',
+    type: 'library'
   })
   const [passwordData, setPasswordData] = useState({
     current_password: '',
@@ -27,37 +28,39 @@ const Settings = () => {
   })
 
   useEffect(() => {
-    if (selectedLibrary?.id) {
+    if (selectedOrg?.id) {
       fetchSettings()
     }
-  }, [selectedLibrary])
+  }, [selectedOrg])
 
   const fetchSettings = async () => {
     try {
-      const response = await settingsAPI.get({ library_id: selectedLibrary.id }).catch(() => ({ success: false, data: null }))
+      const response = await settingsAPI.get({ org_id: selectedOrg.id }).catch(() => ({ success: false, data: null }))
       if (response.success && response.data) {
         const profile = response.data.profile || response.data
         setFormData({
-          library_name: profile.library_name || selectedLibrary.library_name || '',
+          name: profile.name || selectedOrg.name || '',
           address: profile.address || '',
           city: profile.city || '',
           state: profile.state || '',
           pincode: profile.pincode || '',
           phone: profile.phone || '',
           email: profile.email || '',
-          gstin: profile.gstin || profile.gst_number || ''
+          gstin: profile.gstin || profile.gst_number || '',
+          type: profile.type || selectedOrg.type || 'library'
         })
       } else {
-        // If no settings exist, use library data
+        // If no settings exist, use organization data
         setFormData({
-          library_name: selectedLibrary.library_name || '',
-          address: selectedLibrary.address || '',
-          city: selectedLibrary.city || '',
-          state: selectedLibrary.state || '',
+          name: selectedOrg.name || '',
+          address: selectedOrg.address || '',
+          city: selectedOrg.city || '',
+          state: selectedOrg.state || '',
           pincode: '',
           phone: '',
           email: '',
-          gstin: ''
+          gstin: '',
+          type: selectedOrg.type || 'library'
         })
       }
     } catch (error) {
@@ -69,7 +72,7 @@ const Settings = () => {
     e.preventDefault()
     try {
       setLoading(true)
-      await settingsAPI.update({ ...formData, type: 'profile', library_id: selectedLibrary.id })
+      await settingsAPI.update({ ...formData, type: 'profile', org_id: selectedOrg.id })
       toast.success('Settings updated successfully')
     } catch (error) {
       toast.error('Failed to update settings')
@@ -108,7 +111,7 @@ const Settings = () => {
   }
 
   const tabs = [
-    { id: 'profile', label: 'Library Profile', icon: Building },
+    { id: 'profile', label: 'Organization Profile', icon: Building },
     { id: 'password', label: 'Change Password', icon: Lock }
   ]
 
@@ -117,7 +120,7 @@ const Settings = () => {
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-600 mt-1">Manage your library settings and preferences</p>
+        <p className="text-gray-600 mt-1">Manage your Organization settings and preferences</p>
       </div>
 
       {/* Tabs */}
@@ -153,15 +156,15 @@ const Settings = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Library Name <span className="text-red-500">*</span>
+                    Organization Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    value={formData.library_name}
-                    onChange={(e) => setFormData({ ...formData, library_name: e.target.value })}
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="input w-full"
-                    placeholder="Enter library name"
+                    placeholder="Enter Organization name"
                   />
                 </div>
 
@@ -174,7 +177,7 @@ const Settings = () => {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="input w-full"
-                    placeholder="library@example.com"
+                    placeholder="organization@example.com"
                   />
                 </div>
 
@@ -202,6 +205,23 @@ const Settings = () => {
                     className="input w-full"
                     placeholder="22AAAAA0000A1Z5"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Organization Type
+                  </label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    className="input w-full"
+                  >
+                    <option value="library">Library</option>
+                    <option value="gym">Gym</option>
+                    <option value="dance">Dance Studio</option>
+                    <option value="yoga">Yoga Center</option>
+                    <option value="tution">Tuition Center</option>
+                  </select>
                 </div>
 
                 <div className="md:col-span-2">
