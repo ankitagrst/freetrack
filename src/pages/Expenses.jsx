@@ -8,6 +8,27 @@ import toast from 'react-hot-toast'
 const Expenses = () => {
   const { selectedOrg } = useOrg()
   const orgType = selectedOrg?.type || 'library'
+  const [expenses, setExpenses] = useState([])
+  const [stats, setStats] = useState({
+    total_expense: 0,
+    monthly_expense: 0,
+    today_expense: 0
+  })
+  const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [currentExpense, setCurrentExpense] = useState(null)
+  const [detailExpense, setDetailExpense] = useState(null)
+  const [showDetailModal, setShowDetailModal] = useState(false)
+  const [formData, setFormData] = useState({
+    expense_category: '',
+    expense_type: '',
+    amount: '',
+    expense_date: new Date().toISOString().split('T')[0],
+    payment_method: 'cash',
+    vendor_name: '',
+    bill_number: '',
+    description: ''
+  })
 
   const getCategories = () => {
     const base = ['Rent', 'Electricity', 'Water', 'Internet', 'Maintenance', 'Salary', 'Stationery', 'Other']

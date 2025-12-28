@@ -473,58 +473,75 @@ const Payments = () => {
           <div className="grid grid-cols-1 gap-4">
             {filteredPayments.map((payment) => (
               <div key={payment.id} className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-lg hover:border-primary/30 transition-all duration-200">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    {/* Header */}
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="flex-1">
-                        <h3 className="font-bold text-gray-900 text-lg truncate">{payment.member_name || `Unknown ${getMemberLabel()}`}</h3>
+                <div className="flex flex-col gap-4">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 text-lg truncate">{payment.member_name || `Unknown ${getMemberLabel()}`}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`inline-flex px-2 py-0.5 text-[10px] font-bold rounded-md capitalize ${getStatusColor(payment.status)}`}>
+                          {payment.status || 'pending'}
+                        </span>
+                        <span className="text-gray-300">•</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                          {payment.payment_date ? format(new Date(payment.payment_date), 'dd MMM yyyy') : 'No date'}
+                        </span>
                       </div>
-                      <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full capitalize shrink-0 ${getStatusColor(payment.status)}`}>
-                        {payment.status || 'pending'}
-                      </span>
                     </div>
-                    
-                    {/* Info Row */}
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-sm">
-                      <span className="flex items-center gap-1.5 text-gray-600">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <span className="font-medium">{payment.payment_date ? format(new Date(payment.payment_date), 'dd MMM yyyy') : 'No date'}</span>
-                      </span>
-                      <span className="text-gray-300">•</span>
-                      <span className={`inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-md capitalize ${getPaymentTypeColor(payment.payment_type)}`}>
-                        {payment.payment_type || 'Other'}
-                      </span>
-                      <span className="text-gray-300">•</span>
-                      <span className="text-gray-600 font-medium capitalize">{payment.payment_method || 'Cash'}</span>
-                    </div>
-                    
-                    {/* Amount Section */}
-                    <div className="bg-gradient-muted rounded-lg px-4 py-3 border border-green-100">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-xs font-medium text-green-700 uppercase tracking-wide">Amount Paid</span>
-                      </div>
-                      <div className="flex items-baseline gap-1 mt-1">
-                        <span className="text-2xl font-bold text-green-700">{formatCurrency(payment.amount || 0)}</span>
-                      </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => openDetailModal(payment)}
+                        className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors border border-gray-100 hover:border-primary/20"
+                        title="View Details"
+                      >
+                        <Eye className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => openModal(payment)}
+                        className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100 hover:border-gray-200"
+                        title="Edit Payment"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
                     </div>
                   </div>
                   
-                  {/* Actions */}
-                  <div className="flex flex-col gap-2 shrink-0">
+                  {/* Info Row */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 rounded-lg border border-gray-100">
+                      <CreditCard className="w-3.5 h-3.5 text-gray-400" />
+                      <span className={`text-xs font-bold capitalize ${getPaymentTypeColor(payment.payment_type)}`}>
+                        {payment.payment_type || 'Other'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 rounded-lg border border-gray-100">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                      <span className="text-xs font-bold text-gray-600 capitalize">{payment.payment_method || 'Cash'}</span>
+                    </div>
+                    {payment.transaction_id && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 rounded-lg border border-gray-100">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">ID:</span>
+                        <span className="text-xs font-mono font-medium text-gray-600">{payment.transaction_id}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Amount Section */}
+                  <div className="bg-gradient-to-r from-green-50 to-transparent rounded-xl px-4 py-3 border border-green-100/50 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold text-green-700 uppercase tracking-widest mb-0.5">Amount Paid</p>
+                      <p className="text-2xl font-black text-green-700">{formatCurrency(payment.amount || 0)}</p>
+                    </div>
                     <button
-                      onClick={() => openDetailModal(payment)}
-                      className="p-2.5 text-primary hover:bg-primary/10 rounded-lg transition-colors border border-transparent hover:border-primary/20"
-                      title="View Details"
+                      onClick={() => {
+                        setInvoiceMember({ id: payment.member_id, full_name: payment.member_name })
+                        setInvoicePayment(payment)
+                        setShowInvoice(true)
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-white text-green-700 border border-green-200 rounded-lg text-sm font-bold hover:bg-green-50 transition-colors shadow-sm"
                     >
-                      <Eye className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => openModal(payment)}
-                      className="p-2.5 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-200"
-                      title="Edit Payment"
-                    >
-                      <Edit className="w-5 h-5" />
+                      <Printer className="w-4 h-4" />
+                      Receipt
                     </button>
                   </div>
                 </div>
@@ -654,7 +671,7 @@ const Payments = () => {
         <InvoiceGenerator
           member={invoiceMember}
           payment={invoicePayment}
-          organization={selectedOrg}
+          org={selectedOrg}
           onClose={closeInvoice}
         />
       )}

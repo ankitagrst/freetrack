@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { membersAPI, plansAPI, seatsAPI, paymentsAPI } from '../services/api'
 import { useOrg } from '../context/OrgContext'
 import { formatCurrency } from '../utils/formatters'
-import { Plus, Search, Edit, Trash2, Users, UserCheck, UserX, Clock, X, CreditCard, User, IdCard, RefreshCw, Ban, CheckCircle, Phone, MapPin, Calendar, IndianRupee, Printer, Camera, MessageSquare, Image } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Users, UserCheck, UserX, Clock, X, CreditCard, User, IdCard, RefreshCw, Ban, CheckCircle, Phone, MapPin, Calendar, IndianRupee, Printer, Camera, MessageSquare, Image, BookOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format, differenceInDays, addMonths, addDays } from 'date-fns'
 import InvoiceGenerator from '../components/InvoiceGenerator'
@@ -870,19 +870,21 @@ const Members = () => {
           </div>
         ) : (
           filteredMembers.map((member) => {
-            const daysRemaining = member.plan_end_date 
-              ? differenceInDays(new Date(member.plan_end_date), new Date())
+            const planEndDate = member.plan_end_date && member.plan_end_date !== '0000-00-00' ? new Date(member.plan_end_date) : null
+            const isValidDate = planEndDate && !isNaN(planEndDate.getTime()) && planEndDate.getFullYear() > 2000
+            const daysRemaining = isValidDate 
+              ? differenceInDays(planEndDate, new Date())
               : null
             const isExpired = daysRemaining !== null && daysRemaining < 0
             const isExpiring = daysRemaining !== null && daysRemaining >= 0 && daysRemaining <= 7
             
             return (
-              <div key={member.id} className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6 hover:shadow-md transition-shadow">
+              <div key={member.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow overflow-hidden">
                 {/* Header Section */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-start gap-4 flex-1">
+                <div className="flex items-start justify-between mb-3 gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
                     {/* Avatar */}
-                    <div className="w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-100">
                       {member.photo ? (
                         <img 
                           src={member.photo} 
@@ -890,11 +892,11 @@ const Members = () => {
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             e.target.style.display = 'none'
-                            e.target.parentElement.innerHTML = `<div class="w-full h-full bg-gradient-primary flex items-center justify-center text-white text-xl font-bold">${(member.full_name || member.name || 'U').charAt(0).toUpperCase()}</div>`
+                            e.target.parentElement.innerHTML = `<div class="w-full h-full bg-gradient-primary flex items-center justify-center text-white text-lg font-bold">${(member.full_name || member.name || 'U').charAt(0).toUpperCase()}</div>`
                           }}
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-primary flex items-center justify-center text-white text-xl font-bold">
+                        <div className="w-full h-full bg-gradient-primary flex items-center justify-center text-white text-lg font-bold">
                           {(member.full_name || member.name || 'U').charAt(0).toUpperCase()}
                         </div>
                       )}
@@ -902,190 +904,140 @@ const Members = () => {
                     
                     {/* Member Info */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-bold text-gray-900 truncate">
+                      <h3 className="text-base font-bold text-gray-900 truncate">
                         {member.full_name || member.name}
                       </h3>
-                      <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
-                        <IdCard className="w-4 h-4" />
-                        <span className="font-mono font-semibold">{member.member_code || 'N/A'}</span>
-                      </p>
-                      {isLibrary && member.seat_number && (
-                        <p className="text-sm text-primary font-semibold mt-1">
-                          🪑 Seat: {member.seat_number}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-wider">{member.member_code || 'N/A'}</span>
+                        {isLibrary && member.seat_number && (
+                          <span className="text-[10px] font-bold text-primary bg-primary/5 px-1.5 py-0.5 rounded">
+                            🪑 {member.seat_number}
+                          </span>
+                        )}
+                      </div>
                     </div>
+                  </div>
 
-                    {/* Status Badge */}
-                    <div className="flex flex-col items-end gap-2">
-                      <span className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full ${
-                        member.status === 'suspended' 
-                          ? 'bg-red-100 text-red-800' 
-                          : isExpired
-                          ? 'bg-gray-100 text-gray-800'
-                          : isExpiring
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {member.status === 'suspended' ? 'BLOCKED' : isExpired ? 'EXPIRED' : isExpiring ? 'EXPIRING' : 'ACTIVE'}
+                  {/* Status Badge */}
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-lg ${
+                      member.status === 'suspended' 
+                        ? 'bg-red-100 text-red-800' 
+                        : isExpired
+                        ? 'bg-gray-100 text-gray-800'
+                        : isExpiring
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {member.status === 'suspended' ? 'BLOCKED' : isExpired ? 'EXPIRED' : isExpiring ? 'EXPIRING' : 'ACTIVE'}
+                    </span>
+                    {(isExpired || isExpiring) && daysRemaining !== null && (
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">
+                        {isExpired ? `${Math.abs(daysRemaining)}d ago` : `${daysRemaining}d left`}
                       </span>
-                      {(isExpired || isExpiring) && daysRemaining !== null && (
-                        <span className="text-xs text-gray-500">
-                          {isExpired ? `${Math.abs(daysRemaining)} days ago` : `${daysRemaining} days left`}
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Contact */}
-                <div className="grid grid-cols-1 gap-2 mb-4 text-sm">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Phone className="w-4 h-4" />
-                    <a href={`tel:${member.phone}`} className="hover:underline">{member.phone}</a>
+                {/* Contact & Plan Summary */}
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div className="flex items-center gap-2 text-gray-600 bg-gray-50 p-2 rounded-lg border border-gray-100">
+                    <Phone className="w-3.5 h-3.5 text-primary" />
+                    <a href={`tel:${member.phone}`} className="text-xs font-bold truncate">{member.phone}</a>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600 bg-gray-50 p-2 rounded-lg border border-gray-100">
+                    <BookOpen className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-bold truncate">{member.plan_name || 'No Plan'}</span>
                   </div>
                 </div>
 
-                {/* Plan Details */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 py-4 border-t border-b border-gray-200">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Plan</p>
-                    <p className="font-semibold text-gray-900 truncate">{member.plan_name || 'N/A'}</p>
+                {/* Dates & Type */}
+                <div className="grid grid-cols-3 gap-2 py-3 border-t border-b border-gray-100 mb-3">
+                  <div className="text-center border-r border-gray-100">
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Type</p>
+                    <p className="text-[11px] font-black text-gray-900 truncate">{member.plan_type || 'Fullday'}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Type</p>
-                    <p className="font-semibold text-gray-900">{member.plan_type || 'Fullday'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Join</p>
-                    <p className="font-semibold text-gray-900">
-                      {member.plan_start_date ? format(new Date(member.plan_start_date), 'dd MMM, yyyy') : 'N/A'}
+                  <div className="text-center border-r border-gray-100">
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Join</p>
+                    <p className="text-[11px] font-black text-gray-900">
+                      {(() => {
+                        if (!member.plan_start_date || member.plan_start_date === '0000-00-00') return 'N/A'
+                        const d = new Date(member.plan_start_date)
+                        return isNaN(d.getTime()) ? 'N/A' : format(d, 'dd MMM, yy')
+                      })()}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Expiry</p>
-                    <p className={`font-semibold ${isExpired ? 'text-red-600' : isExpiring ? 'text-yellow-600' : 'text-gray-900'}`}>
-                      {member.plan_end_date ? format(new Date(member.plan_end_date), 'dd MMM, yyyy') : 'N/A'}
+                  <div className="text-center">
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Expiry</p>
+                    <p className={`text-[11px] font-black ${isExpired ? 'text-red-500' : isExpiring ? 'text-yellow-600' : 'text-gray-900'}`}>
+                      {(() => {
+                        if (!member.plan_end_date || member.plan_end_date === '0000-00-00') return 'N/A'
+                        const d = new Date(member.plan_end_date)
+                        return isNaN(d.getTime()) ? 'N/A' : format(d, 'dd MMM, yy')
+                      })()}
                     </p>
                   </div>
                 </div>
 
                 {/* Payment Details */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-4 border-b border-gray-200">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Amount</p>
-                    <p className="font-bold text-gray-900 flex items-center">
-                      <IndianRupee className="w-4 h-4" />
-                      {member.plan_price || '0'}
-                    </p>
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="bg-gray-50 p-2 rounded-lg text-center">
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Amount</p>
+                    <p className="text-xs font-black text-gray-900">₹{member.plan_price || '0'}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Paid</p>
-                    <p className="font-bold text-green-600 flex items-center">
-                      <IndianRupee className="w-4 h-4" />
-                      {member.plan_price || '0'}
-                    </p>
+                  <div className="bg-green-50 p-2 rounded-lg text-center">
+                    <p className="text-[9px] font-bold text-green-600 uppercase tracking-widest mb-0.5">Paid</p>
+                    <p className="text-xs font-black text-green-700">₹{member.plan_price || '0'}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Due</p>
-                    <p className="font-bold text-red-600 flex items-center">
-                      <IndianRupee className="w-4 h-4" />
-                      0
-                    </p>
+                  <div className="bg-red-50 p-2 rounded-lg text-center">
+                    <p className="text-[9px] font-bold text-red-600 uppercase tracking-widest mb-0.5">Due</p>
+                    <p className="text-xs font-black text-red-700">₹0</p>
                   </div>
                 </div>
 
                 {/* Action Buttons - Horizontal Scroll */}
-                <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide [&>button]:min-w-[120px] [&>a]:min-w-[120px]">
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                   <button
                     onClick={() => openWhatsAppChat(member)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-success rounded-lg transition-all shadow-sm"
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold bg-green-600 text-white rounded-lg transition-all active:scale-95"
                   >
-                    <MessageSquare className="w-4 h-4" />
+                    <MessageSquare className="w-3.5 h-3.5" />
                     WA Chat
                   </button>
                   <button
                     onClick={() => openWhatsAppReminderModal(member)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-success rounded-lg transition-all shadow-sm"
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold bg-green-600 text-white rounded-lg transition-all active:scale-95"
                   >
-                    <MessageSquare className="w-4 h-4" />
-                    Send Reminder
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    Reminder
                   </button>
-                  <a
-                    href={`sms:${member.phone}`}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-info rounded-lg transition-all shadow-sm"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    Message
-                  </a>
                   <button
                     onClick={() => openProfileModal(member)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-primary rounded-lg transition-all shadow-sm"
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold bg-primary text-white rounded-lg transition-all active:scale-95"
                   >
-                    <User className="w-4 h-4" />
+                    <User className="w-3.5 h-3.5" />
                     Profile
                   </button>
                   <button
-                    onClick={() => generateIdCard(member)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-accent rounded-lg transition-all shadow-sm"
-                  >
-                    <IdCard className="w-4 h-4" />
-                    ID-Card
-                  </button>
-                  <button
                     onClick={() => openInvoice(member)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-primary rounded-lg transition-all shadow-sm"
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold bg-accent text-white rounded-lg transition-all active:scale-95"
                   >
-                    <Printer className="w-4 h-4" />
+                    <Printer className="w-3.5 h-3.5" />
                     Invoice
                   </button>
                   <button
-                    onClick={() => openModal(member)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-success rounded-lg transition-all shadow-sm"
-                  >
-                    <Edit className="w-4 h-4" />
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => openPaymentModal(member)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-primary rounded-lg transition-all shadow-sm"
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    Add Pay
-                  </button>
-                  <button
                     onClick={() => openRenewModal(member)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-warning rounded-lg transition-all shadow-sm"
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold bg-purple-600 text-white rounded-lg transition-all active:scale-95"
                   >
-                    <RefreshCw className="w-4 h-4" />
+                    <RefreshCw className="w-3.5 h-3.5" />
                     Renew
                   </button>
                   <button
-                    onClick={() => handleBlockUnblock(member)}
-                    className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white rounded-lg transition-all shadow-sm ${
-                      member.status === 'suspended'
-                        ? 'bg-success text-white hover:bg-success-dark'
-                        : 'bg-danger text-white hover:bg-danger-dark'
-                    }`}
+                    onClick={() => openEditModal(member)}
+                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold bg-gray-600 text-white rounded-lg transition-all active:scale-95"
                   >
-                    {member.status === 'suspended' ? (
-                      <>
-                        <CheckCircle className="w-4 h-4" />
-                        Unblock
-                      </>
-                    ) : (
-                      <>
-                        <Ban className="w-4 h-4" />
-                        Block
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => openDeleteModal(member)}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-3 text-sm font-semibold btn-danger rounded-lg transition-all shadow-sm"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Delete
+                    <Edit className="w-3.5 h-3.5" />
+                    Edit
                   </button>
                 </div>
               </div>

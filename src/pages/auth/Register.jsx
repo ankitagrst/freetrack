@@ -197,10 +197,10 @@ const Register = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Organization Code *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Organization Code</label>
                   <input
                     type="text"
-                    {...register('code', { required: 'Organization code is required' })}
+                    {...register('code')}
                     className="input"
                     placeholder="ORG001"
                   />
@@ -257,10 +257,10 @@ const Register = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">ZIP Code *</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">ZIP Code</label>
                     <input
                       type="text"
-                      {...register('zipCode', { required: 'ZIP code is required' })}
+                      {...register('zipCode')}
                       className="input"
                       placeholder="10001"
                     />

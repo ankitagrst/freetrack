@@ -18,7 +18,7 @@ const InvoiceGenerator = ({ member, payment, onClose, org }) => {
     address: org?.address || member.org_address || 'Address',
     phone: org?.phone || member.org_phone || '',
     email: org?.email || member.org_email || '',
-    website: organization?.website || member.organization_website || ''
+    website: org?.website || member.organization_website || ''
   }
 
   const payableAmount = useMemo(() => Number(payment?.amount || member.plan_price || 0), [payment, member])

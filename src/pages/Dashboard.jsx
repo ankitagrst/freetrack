@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Users, CreditCard, TrendingUp, UserCheck, UserX, Clock, IndianRupee, AlertCircle, Calendar, Plus, IdCard, X, Check, CheckCircle2, Sofa, Sparkles, UserMinus } from 'lucide-react'
-import { membersAPI, paymentsAPI, attendanceAPI } from '../services/api'
+import { Users, CreditCard, TrendingUp, UserCheck, UserX, Clock, IndianRupee, AlertCircle, Calendar, Plus, IdCard, X, Check, CheckCircle2, Sofa, Sparkles, UserMinus, Eye } from 'lucide-react'
+import { membersAPI, paymentsAPI } from '../services/api'
 import { useOrg } from '../context/OrgContext'
 import { formatCurrency, formatNumber } from '../utils/formatters'
 import toast from 'react-hot-toast'
@@ -29,7 +29,6 @@ const Dashboard = () => {
   const [memberStats, setMemberStats] = useState(null)
   const [orgInfo, setOrgInfo] = useState(null)
   const [paymentStats, setPaymentStats] = useState(null)
-  const [attendanceStats, setAttendanceStats] = useState(null)
   const [recentActivity, setRecentActivity] = useState([])
   const [monthlyCollections, setMonthlyCollections] = useState([])
   const [todayCollection, setTodayCollection] = useState(0)
@@ -39,6 +38,8 @@ const Dashboard = () => {
   const [showMemberModal, setShowMemberModal] = useState(false)
   const [selectedMemberType, setSelectedMemberType] = useState(null)
   const [filteredMembers, setFilteredMembers] = useState([])
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [profileMember, setProfileMember] = useState(null)
 
   useEffect(() => {
     if (selectedOrg?.id) {
@@ -52,11 +53,10 @@ const Dashboard = () => {
       
       const params = { org_id: selectedOrg.id }
       
-      const [membersStatsRes, orgInfoRes, paymentsStatsRes, attendanceStatsRes, recentPayments, monthlyStats] = await Promise.all([
+      const [membersStatsRes, orgInfoRes, paymentsStatsRes, recentPayments, monthlyStats] = await Promise.all([
         membersAPI.getStats(params).catch(() => ({ success: false, data: null })),
         membersAPI.getOrgInfo(params).catch(() => ({ success: false, data: null })),
         paymentsAPI.getStats(params).catch(() => ({ success: false, data: null })),
-        attendanceAPI.getStats(params).catch(() => ({ success: false, data: null })),
         paymentsAPI.getAll({ ...params, limit: 5 }).catch(() => ({ success: false, data: [] })),
         paymentsAPI.getMonthlyStats(params).catch(() => ({ success: false, data: [] }))
       ])
@@ -74,10 +74,6 @@ const Dashboard = () => {
         setPaymentStats(paymentsStatsRes.data)
         // Extract today's collection from payment stats
         setTodayCollection(paymentsStatsRes.data.total_today || 0)
-      }
-
-      if (attendanceStatsRes.success && attendanceStatsRes.data) {
-        setAttendanceStats(attendanceStatsRes.data)
       }
 
       // Process monthly collections
@@ -137,26 +133,27 @@ const Dashboard = () => {
         case 'active':
           // Active: status is active AND plan hasn't expired
           filtered = members.filter(m => {
+            if (!m.plan_end_date || m.plan_end_date === '0000-00-00') return false
             const planEndDate = new Date(m.plan_end_date)
-            return m.status === 'active' && planEndDate >= today
+            return m.status === 'active' && planEndDate >= today && planEndDate.getFullYear() > 2000
           })
           break
         case 'expired':
           // Expired: plan_end_date is in the past
           filtered = members.filter(m => {
-            if (!m.plan_end_date) return false
+            if (!m.plan_end_date || m.plan_end_date === '0000-00-00') return false
             const planEndDate = new Date(m.plan_end_date)
-            return planEndDate < today
+            return planEndDate < today && planEndDate.getFullYear() > 2000
           })
           break
         case 'expiring':
           // Expiring Soon: plan ends within next 7 days
           filtered = members.filter(m => {
-            if (!m.plan_end_date) return false
+            if (!m.plan_end_date || m.plan_end_date === '0000-00-00') return false
             const planEndDate = new Date(m.plan_end_date)
             const diffTime = planEndDate - today
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-            return diffDays >= 0 && diffDays <= 7
+            return diffDays >= 0 && diffDays <= 7 && planEndDate.getFullYear() > 2000
           })
           break
         default:
@@ -332,6 +329,60 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Collection Tracking */}  
+      <div>
+        <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Collection Tracking</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Today's Collection */}
+          <div className="bg-gradient-success rounded-xl shadow-lg p-8 text-white">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold opacity-90">Today Collection</h3>
+              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                <IndianRupee className="w-6 h-6" />
+              </div>
+            </div>
+            <p className="text-5xl font-bold mb-2">{formatCurrency(todayCollection)}</p>
+            <p className="text-sm opacity-75">{format(new Date(), 'EEEE, MMMM dd, yyyy')}</p>
+          </div>
+
+          {/* Monthly Collections */}
+          <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Collections</h3>
+              <div className="space-y-3">
+              {monthlyCollections.length > 0 ? (
+                monthlyCollections.map((month, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleMonthClick(month)}
+                    className="w-full flex items-center justify-between p-4 bg-gradient-muted rounded-lg border border-primary/20 hover:border-primary/40 transition-all cursor-pointer"
+                  >
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {month.month_name || `Month ${idx + 1}`}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Year {month.year || new Date().getFullYear()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-primary">
+                        {formatCurrency(month.total || 0)}
+                      </p>
+                      <p className="text-xs text-gray-500">{month.count || 0} payments</p>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="text-center py-6 text-gray-500">
+                  <Calendar className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm">No collection data available</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Member Stats */}
       {memberStats && (
         <div>
@@ -408,116 +459,6 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Seat Utilization - Only for Libraries and Tuition Centers */}
-      {isLibrary && orgInfo && (
-        <div>
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Seat Utilization</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white rounded-xl shadow-sm border-2 border-primary/20 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Seats</p>
-                  <p className="text-3xl font-bold text-primary mt-1">{orgInfo.seat_limit || 0}</p>
-                </div>
-                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <Sofa className="w-6 h-6 text-primary" />
-                </div>
-              </div>
-            </div>
-            <div className="bg-white rounded-xl shadow-sm border-2 border-green-200 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Occupied</p>
-                  <p className="text-3xl font-bold text-green-600 mt-1">{orgInfo.seats_occupied || 0}</p>
-                </div>
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <UserCheck className="w-6 h-6 text-green-600" />
-                </div>
-              </div>
-            </div>
-            <div className="bg-white rounded-xl shadow-sm border-2 border-blue-200 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Available</p>
-                  <p className="text-3xl font-bold text-blue-600 mt-1">{orgInfo.seats_available || 0}</p>
-                </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-blue-600" />
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Progress Bar */}
-          <div className="mt-4 bg-white rounded-xl shadow-sm border-2 border-gray-200 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-semibold text-gray-700">Occupancy Rate</span>
-              <span className="text-sm font-bold text-primary">{orgInfo.seat_utilization_percentage}%</span>
-            </div>
-            <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden">
-              <div 
-                className="bg-primary h-full transition-all duration-500" 
-                style={{ width: `${orgInfo.seat_utilization_percentage}%` }}
-              ></div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Collection Tracking */}  
-      <div>
-        <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Collection Tracking</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Today's Collection */}
-          <div className="bg-gradient-success rounded-xl shadow-lg p-8 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold opacity-90">Today Collection</h3>
-              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                <IndianRupee className="w-6 h-6" />
-              </div>
-            </div>
-            <p className="text-5xl font-bold mb-2">{formatCurrency(todayCollection)}</p>
-            <p className="text-sm opacity-75">{format(new Date(), 'EEEE, MMMM dd, yyyy')}</p>
-          </div>
-
-          {/* Monthly Collections */}
-          <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Collections</h3>
-              <div className="space-y-3">
-              {monthlyCollections.length > 0 ? (
-                monthlyCollections.map((month, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleMonthClick(month)}
-                    className="w-full flex items-center justify-between p-4 bg-gradient-muted rounded-lg border border-primary/20 hover:border-primary/40 transition-all cursor-pointer"
-                  >
-                    <div className="text-left">
-                      <p className="text-sm font-semibold text-gray-900">
-                        {month.month_name || `Month ${idx + 1}`}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Year {month.year || new Date().getFullYear()}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-primary">
-                        {formatCurrency(month.total || 0)}
-                      </p>
-                      <p className="text-xs text-gray-500">{month.count || 0} payments</p>
-                    </div>
-                  </button>
-                ))
-              ) : (
-                <div className="text-center py-6 text-gray-500">
-                  <Calendar className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm">No collection data available</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Payment Stats */}
       {paymentStats && (
         <div>
@@ -586,70 +527,6 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Attendance Stats */}
-      {attendanceStats && (
-        <div>
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Attendance Overview</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="stats-card stats-card-success">
-              <div className="stats-card-header">
-                <div className="stats-card-content">
-                  <p className="stats-card-label">Today Present</p>
-                  <p className="stats-card-value">
-                    {attendanceStats.today_present || 0}
-                  </p>
-                </div>
-                <div className="stats-card-icon">
-                  <UserCheck className="w-6 h-6" />
-                </div>
-              </div>
-            </div>
-
-            <div className="stats-card stats-card-danger">
-              <div className="stats-card-header">
-                <div className="stats-card-content">
-                  <p className="stats-card-label">Today Absent</p>
-                  <p className="stats-card-value">
-                    {attendanceStats.today_absent || 0}
-                  </p>
-                </div>
-                <div className="stats-card-icon">
-                  <UserX className="w-6 h-6" />
-                </div>
-              </div>
-            </div>
-
-            <div className="stats-card stats-card-primary">
-              <div className="stats-card-header">
-                <div className="stats-card-content">
-                  <p className="stats-card-label">This Month</p>
-                  <p className="stats-card-value">
-                    {attendanceStats.month_count || 0}
-                  </p>
-                </div>
-                <div className="stats-card-icon">
-                  <Calendar className="w-6 h-6" />
-                </div>
-              </div>
-            </div>
-
-            <div className="stats-card stats-card-info">
-              <div className="stats-card-header">
-                <div className="stats-card-content">
-                  <p className="stats-card-label">Avg Rate</p>
-                  <p className="stats-card-value">
-                    {attendanceStats.average_rate ? `${attendanceStats.average_rate}%` : '0%'}
-                  </p>
-                </div>
-                <div className="stats-card-icon">
-                  <TrendingUp className="w-6 h-6" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Quick Actions - Horizontal Scroll */}
       <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
@@ -690,36 +567,59 @@ const Dashboard = () => {
             </div>
             <span className="text-sm font-semibold">Reports</span>
           </a>
+          <a
+            href="/seats"
+            className="flex-shrink-0 flex items-center gap-3 px-6 py-4 bg-gradient-warning border-2 border-warning/30 rounded-lg transition-all min-w-[200px] text-white"
+          >
+            <div className="w-10 h-10 bg-white/15 rounded-lg flex items-center justify-center">
+              <Sofa className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-sm font-semibold">Seats</span>
+          </a>
         </div>
       </div>
 
       {/* Recent Payments */}
       <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Payments</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-gray-900">Recent Payments</h2>
+          <a href="/payments" className="text-sm font-bold text-primary hover:underline">View All</a>
+        </div>
         {recentActivity.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p>No recent payments</p>
-            <p className="text-sm mt-2">Payment activity will appear here</p>
+          <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+            <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 font-medium">No recent payments</p>
+            <p className="text-xs text-gray-400 mt-1">Payment activity will appear here</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {recentActivity.map((payment) => (
-              <div key={payment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-gray-900">{payment.member_name}</p>
-                    <span className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full ${getPaymentTypeColor(payment.payment_type)}`}>
+              <div key={payment.id} className="group bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-bold">
+                      {payment.member_name?.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors">{payment.member_name}</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                        {payment.payment_date ? format(new Date(payment.payment_date), 'dd MMM, yyyy') : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-base font-black text-primary">{formatCurrency(payment.amount)}</p>
+                    <span className={`inline-flex items-center px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-lg ${getPaymentTypeColor(payment.payment_type)}`}>
                       {payment.payment_type}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {payment.payment_date ? format(new Date(payment.payment_date), 'MMM dd, yyyy') : 'N/A'} • {payment.payment_method}
-                  </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-gray-900">{formatCurrency(payment.amount)}</p>
-                  <p className="text-xs text-gray-500">{payment.status}</p>
+                <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{payment.payment_method}</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{payment.status}</span>
                 </div>
               </div>
             ))}
@@ -849,64 +749,191 @@ const Dashboard = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {filteredMembers.map((member) => (
-                    <div key={member.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group">
-                      <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center text-lg font-black flex-shrink-0 group-hover:scale-110 transition-transform">
-                          {member.name?.charAt(0).toUpperCase() || 'M'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="font-black text-gray-900 truncate text-base">{member.name}</p>
-                            <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-lg ${
-                              member.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                            }`}>
-                              {member.status}
-                            </span>
+                  {filteredMembers.map((member) => {
+                    const planEndDate = member.plan_end_date && member.plan_end_date !== '0000-00-00' ? new Date(member.plan_end_date) : null;
+                    const isValidDate = planEndDate && !isNaN(planEndDate.getTime()) && planEndDate.getFullYear() > 2000;
+
+                    return (
+                      <div key={member.id} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                        <div className="flex items-start gap-3">
+                          {/* Avatar & Basic Info */}
+                          <div className="w-10 h-10 bg-primary/10 text-primary rounded-lg flex items-center justify-center text-sm font-black flex-shrink-0">
+                            {member.name?.charAt(0).toUpperCase() || 'M'}
                           </div>
                           
-                          <div className="flex items-center gap-1.5 mt-0.5 text-gray-400">
-                            <IdCard className="w-3 h-3" />
-                            <span className="text-[10px] font-bold tracking-wider uppercase">
-                              {member.member_code || `MEM-${member.id}`}
-                            </span>
-                          </div>
-
-                          <div className="mt-3 grid grid-cols-2 gap-2">
-                            <div className="bg-gray-50 p-2 rounded-lg">
-                              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Phone</p>
-                              <p className="text-xs font-black text-gray-900 truncate">{member.phone}</p>
-                            </div>
-                            <div className="bg-gray-50 p-2 rounded-lg">
-                              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Expiry</p>
-                              <p className={`text-xs font-black ${member.plan_status === 'expired' ? 'text-red-500' : 'text-gray-900'}`}>
-                                {member.plan_end_date ? format(new Date(member.plan_end_date), 'dd MMM, yy') : 'N/A'}
-                              </p>
-                            </div>
-                          </div>
-
-                          {member.plan_status && (
-                            <div className="mt-2">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full ${
-                                member.plan_status === 'active' ? 'bg-primary/10 text-primary' : 
-                                member.plan_status === 'expiring_soon' ? 'bg-yellow-100 text-yellow-700' : 
-                                'bg-red-100 text-red-700'
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="font-black text-gray-900 truncate text-sm">{member.name}</p>
+                              <span className={`flex-shrink-0 inline-flex items-center px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider rounded-md ${
+                                member.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                               }`}>
-                                <div className={`w-1 h-1 rounded-full ${
-                                  member.plan_status === 'active' ? 'bg-primary' : 
-                                  member.plan_status === 'expiring_soon' ? 'bg-yellow-500' : 
-                                  'bg-red-500'
-                                }`} />
-                                {member.plan_status.replace('_', ' ')}
+                                {member.status}
                               </span>
                             </div>
-                          )}
+                            
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[10px] font-bold text-gray-500 truncate">{member.phone}</span>
+                              <span className="text-[10px] font-bold text-gray-400">•</span>
+                              <span className="text-[10px] font-bold text-primary uppercase">{member.seat_number ? `Seat: ${member.seat_number}` : 'No Seat'}</span>
+                            </div>
+
+                            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 border-t border-gray-50 pt-2">
+                              <div className="flex justify-between items-center">
+                                <span className="text-[9px] font-bold text-gray-400 uppercase">Expiry</span>
+                                <span className={`text-[10px] font-black ${member.plan_status === 'expired' ? 'text-red-500' : 'text-gray-900'}`}>
+                                  {isValidDate ? format(planEndDate, 'dd MMM, yy') : 'N/A'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-[9px] font-bold text-gray-400 uppercase">Status</span>
+                                <span className={`text-[10px] font-black uppercase ${
+                                  member.plan_status === 'active' ? 'text-primary' : 
+                                  member.plan_status === 'expiring_soon' ? 'text-yellow-600' : 
+                                  'text-red-500'
+                                }`}>
+                                  {member.plan_status?.replace('_', ' ') || 'N/A'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="mt-2 flex justify-end">
+                              <button
+                                onClick={() => {
+                                  setProfileMember(member)
+                                  setShowProfileModal(true)
+                                }}
+                                className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                              >
+                                <Eye className="w-3 h-3" />
+                                View Profile
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Modal */}
+      {showProfileModal && profileMember && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[70]">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden animate-scale-in max-h-[90vh] flex flex-col">
+            {/* Header Section */}
+            <div className="p-4 border-b border-gray-100">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 rounded-full overflow-hidden bg-primary/10 border-4 border-white shadow-md flex items-center justify-center flex-shrink-0">
+                    {profileMember.photo ? (
+                      <img 
+                        src={profileMember.photo} 
+                        alt={profileMember.full_name || profileMember.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-2xl font-bold text-primary">
+                        {(profileMember.full_name || profileMember.name || 'U').charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-gray-900 leading-tight">
+                      {profileMember.full_name || profileMember.name}
+                    </h3>
+                    <div className="flex items-center gap-1.5 mt-0.5 text-gray-500">
+                      <IdCard className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-bold tracking-wider uppercase">
+                        {profileMember.member_code || `MEM-${profileMember.id}`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowProfileModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 text-gray-600 bg-gray-50 p-2 rounded-xl">
+                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                  <Phone className="w-4 h-4 text-primary" />
+                </div>
+                <a href={`tel:${profileMember.phone}`} className="text-base font-bold hover:text-primary transition-colors">
+                  {profileMember.phone}
+                </a>
+              </div>
+            </div>
+
+            {/* Details Section - Scrollable if needed */}
+            <div className="p-4 space-y-4 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Plan</p>
+                  <p className="text-base font-black text-gray-900">{profileMember.plan_name || 'N/A'}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</p>
+                  <p className={`text-base font-black ${profileMember.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
+                    {profileMember.status?.toUpperCase()}
+                  </p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Join</p>
+                  <p className="text-base font-black text-gray-900">
+                    {(() => {
+                      if (!profileMember.plan_start_date || profileMember.plan_start_date === '0000-00-00') return 'N/A'
+                      const d = new Date(profileMember.plan_start_date)
+                      return isNaN(d.getTime()) ? 'N/A' : format(d, 'dd MMM, yy')
+                    })()}
+                  </p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Expiry</p>
+                  <p className={`text-base font-black ${new Date(profileMember.plan_end_date) < new Date() ? 'text-red-500' : 'text-gray-900'}`}>
+                    {(() => {
+                      if (!profileMember.plan_end_date || profileMember.plan_end_date === '0000-00-00') return 'N/A'
+                      const d = new Date(profileMember.plan_end_date)
+                      return isNaN(d.getTime()) ? 'N/A' : format(d, 'dd MMM, yy')
+                    })()}
+                  </p>
+                </div>
+              </div>
+
+              <div className="h-px bg-gray-100 w-full" />
+
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                {isLibrary && (
+                  <div className="space-y-0.5">
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Seat</p>
+                    <p className="text-xs font-black text-gray-900">{profileMember.seat_number || 'N/A'}</p>
+                  </div>
+                )}
+                <div className="space-y-0.5">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Gender</p>
+                  <p className="text-xs font-black text-gray-900 capitalize">{profileMember.gender || 'N/A'}</p>
+                </div>
+                <div className="col-span-2 space-y-0.5">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Email</p>
+                  <p className="text-xs font-black text-gray-900 truncate">{profileMember.email || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions Section */}
+            <div className="p-4 bg-gray-50 flex gap-3 mt-auto">
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="flex-1 bg-primary text-white py-3.5 rounded-2xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

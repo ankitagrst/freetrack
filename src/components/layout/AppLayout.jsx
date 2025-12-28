@@ -39,7 +39,6 @@ const AppLayout = () => {
         { path: '/organizations', icon: BookOpen, label: 'My Organizations' },
         { path: '/members', icon: Users, label: memberLabel },
         { path: '/payments', icon: CreditCard, label: 'Payments' },
-        { path: '/attendance', icon: ClipboardCheck, label: 'Attendance' },
       ],
       secondary: [
         { path: '/expenses', icon: Receipt, label: 'Expenses' },
@@ -207,32 +206,32 @@ const AppLayout = () => {
         </main>
 
         {/* Bottom Navigation - Mobile Only */}
-        <nav ref={navRef} style={{ height: 'var(--bottom-nav-height)' }} className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 safe-area-bottom safe-area-inset pb-4 pt-2">
-          <div className="flex items-center justify-around px-2 py-1">
+        <nav ref={navRef} className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 pb-safe">
+          <div className="flex items-center justify-between px-1 py-2">
             {menuPrimary.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg flex-1 transition-all ${
+                className={`flex flex-col items-center justify-center gap-1 px-1 py-1 rounded-lg flex-1 min-w-0 transition-all ${
                   isActive(item.path)
-                    ? 'text-primary bg-primary/10'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'text-primary bg-primary/5'
+                    : 'text-gray-500 hover:bg-gray-50'
                 }`}
               >
                 <item.icon className="w-5 h-5" />
-                <span className="text-xs font-medium truncate w-full text-center">{item.label}</span>
+                <span className="text-[10px] font-bold truncate w-full text-center uppercase tracking-tighter">{item.label}</span>
               </Link>
             ))}
             <button
               onClick={() => setShowMoreMenu(!showMoreMenu)}
-              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg flex-1 transition-all ${
+              className={`flex flex-col items-center justify-center gap-1 px-1 py-1 rounded-lg flex-1 min-w-0 transition-all ${
                 showMoreMenu || menuSecondary.some(item => isActive(item.path))
-                  ? 'text-primary bg-primary/10'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'text-primary bg-primary/5'
+                  : 'text-gray-500 hover:bg-gray-50'
               }`}
             >
               <MoreHorizontal className="w-5 h-5" />
-              <span className="text-xs font-medium">More</span>
+              <span className="text-[10px] font-bold uppercase tracking-tighter">More</span>
             </button>
           </div>
         </nav>

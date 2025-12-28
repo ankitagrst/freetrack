@@ -14,7 +14,6 @@ import AdminDashboard from './pages/AdminDashboard'
 import Members from './pages/Members'
 import Organizations from './pages/Organizations'
 import Payments from './pages/Payments'
-// import Attendance from './pages/Attendance'
 import Expenses from './pages/Expenses'
 import Seats from './pages/Seats'
 import Notices from './pages/Notices'
@@ -65,7 +64,6 @@ function App() {
             <Route path="/organizations" element={<Organizations />} />
             <Route path="/members" element={<Members />} />
             <Route path="/payments" element={<Payments />} />
-            {/* <Route path="/attendance" element={<Attendance />} /> */}
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/seats" element={<Seats />} />
             <Route path="/notices" element={<Notices />} />

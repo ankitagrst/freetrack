@@ -80,6 +80,7 @@
   .bg-gradient-danger { @apply bg-gradient-to-r from-danger to-danger-dark; }
   .bg-gradient-success { @apply bg-gradient-to-r from-success to-success-dark; }
   .bg-gradient-info { @apply bg-gradient-to-r from-info to-info-dark; }
+  .bg-gradient-warning { @apply bg-gradient-to-r from-warning to-warning-dark; }
   .bg-gradient-accent { @apply bg-gradient-to-r from-accent to-accent-dark; }
   .bg-gradient-muted { @apply bg-gradient-to-r from-gray-50 to-gray-100; }
 
