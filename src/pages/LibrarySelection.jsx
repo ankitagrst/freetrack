@@ -111,11 +111,9 @@ export default function organizationSelection() {
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center shadow-lg">
-                <Building2 className="w-6 h-6 text-white" />
-              </div>
+              <img src="/logo.png" alt="Feestrack" className="w-12 h-12" />
               <div>
-                <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">FeeTrack</h1>
+                <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">Feestrack</h1>
                 <p className="text-xs text-gray-500">{user?.email}</p>
               </div>
             </div>
@@ -144,7 +142,7 @@ export default function organizationSelection() {
         {/* Welcome Section */}
         <div className="text-center mb-12 animate-fade-in">
           <h2 className="text-4xl sm:text-5xl font-extrabold bg-gradient-primary bg-clip-text text-transparent mb-4">
-            {orgs.length === 0 ? 'Welcome to FeeTrack!' : 'Select Your Organization'}
+            {orgs.length === 0 ? 'Welcome to Feestrack!' : 'Select Your Organization'}
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             {orgs.length === 0 

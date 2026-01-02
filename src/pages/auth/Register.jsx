@@ -44,11 +44,9 @@ const Register = () => {
       <div className="max-w-2xl mx-auto">
         {/* Logo & Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-3xl shadow-lg shadow-primary/30 mb-6">
-            <BookmarkCheck className="w-12 h-12 text-white" />
-          </div>
+          <img src="/logo.png" alt="Feestrack" className="w-20 h-20 mx-auto mb-6" />
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
-          <p className="text-gray-600">Register your organization with FeeTrack</p>
+          <p className="text-gray-600">Register your organization with Feestrack</p>
         </div>
 
         {/* Progress Steps */}

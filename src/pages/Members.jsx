@@ -504,7 +504,7 @@ const Members = () => {
 
       // QR encodes payment details (scannable content); if you later add UPI/VPA settings,
       // you can switch this text to a real UPI deep link.
-      const qrText = `FeeTrack Payment\nOrganization: ${selectedOrg?.name || ''}\nMember: ${member.full_name || member.name || ''}\nMember ID: ${member.member_code || ''}\nAmount: ${amount}`
+      const qrText = `Feestrack Payment\nOrganization: ${selectedOrg?.name || ''}\nMember: ${member.full_name || member.name || ''}\nMember ID: ${member.member_code || ''}\nAmount: ${amount}`
       const qrFile = await generateQrFile(qrText, `payment-qr-${member.member_code || member.id}.png`)
 
       if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [qrFile] }))) {

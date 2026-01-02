@@ -1,0 +1,14 @@
+<svg viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="800" fill="white"/>
+  <!-- Green F Logo -->
+  <path d="M 250 360 Q 250 340 270 340 L 555 340 Q 575 340 575 360 Q 575 380 555 380 L 370 380 L 370 460 L 505 460 Q 525 460 525 480 Q 525 500 505 500 L 370 500 L 370 680 Q 370 700 350 700 Q 330 700 330 680 L 330 360 Q 330 340 350 340 L 250 340 Q 230 340 250 360 Z" fill="#1B9AAA" transform="translate(0, 50)"/>
+  <!-- Correction: Creating a proper F shape -->
+  <g fill="#1B9AAA">
+    <!-- Vertical bar of F -->
+    <rect x="250" y="360" width="120" height="350" rx="20"/>
+    <!-- Top horizontal bar -->
+    <rect x="250" y="360" width="305" height="110" rx="20"/>
+    <!-- Middle horizontal bar -->
+    <rect x="250" y="530" width="255" height="110" rx="20"/>
+  </g>
+</svg>

@@ -308,7 +308,7 @@ const Dashboard = () => {
       <div className="bg-gradient-primary rounded-xl shadow-lg p-6 sm:p-8 text-white">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Welcome to {selectedOrg?.name || 'FeeTrack'}! 👋</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Welcome to {selectedOrg?.name || 'Feestrack'}! 👋</h1>
             <p className="text-white/80 text-sm sm:text-base">Manage your {getOrgLabel()} efficiently with our comprehensive dashboard</p>
           </div>
           <a

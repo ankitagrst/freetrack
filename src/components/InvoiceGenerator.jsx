@@ -42,7 +42,7 @@ const InvoiceGenerator = ({ member, payment, onClose, org }) => {
     let isMounted = true
     const build = async () => {
       try {
-        const qrText = `FeeTrack Invoice\nMember: ${member.full_name || member.name || ''}\nMember ID: ${member.member_code || ''}\nAmount: ${payableAmount}`
+        const qrText = `Feestrack Invoice\nMember: ${member.full_name || member.name || ''}\nMember ID: ${member.member_code || ''}\nAmount: ${payableAmount}`
         const url = await QRCode.toDataURL(qrText, { width: 384, margin: 1 })
         if (isMounted) setQrDataUrl(url)
       } catch (e) {
