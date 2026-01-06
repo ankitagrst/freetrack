@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Mail, Lock, User, Phone, Building, BookmarkCheck, MapPin, CreditCard } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
+import axios from '../../lib/axios'
 
 const Register = () => {
   const { register: registerUser } = useAuth()
@@ -14,8 +15,33 @@ const Register = () => {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [step, setStep] = useState(1)
+  const [subscriptionPlans, setSubscriptionPlans] = useState([])
+  const [loadingPlans, setLoadingPlans] = useState(true)
 
   const password = watch('password')
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const baseUrl = import.meta.env.VITE_API_URL || '/api'
+        const url = `${baseUrl}/public-plans.php`
+        const response = await axios.get(url)
+        console.log('Plans response:', response.data)
+        if (response.data.success && response.data.data) {
+          setSubscriptionPlans(response.data.data)
+        } else {
+          console.warn('No plans data received')
+          setSubscriptionPlans([])
+        }
+      } catch (error) {
+        console.error('Error fetching plans:', error)
+        setSubscriptionPlans([])
+      } finally {
+        setLoadingPlans(false)
+      }
+    }
+    fetchPlans()
+  }, [])
 
   const onSubmit = async (data) => {
     setIsLoading(true)
@@ -286,11 +312,21 @@ const Register = () => {
                 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Subscription Plan *</label>
-                  <select {...register('subscriptionPlan')} className="input">
-                    <option value="1">Basic Plan - ₹5,000/month</option>
-                    <option value="2">Standard Plan - ₹10,000/month</option>
-                    <option value="3">Premium Plan - ₹15,000/month</option>
-                  </select>
+                  {loadingPlans ? (
+                    <div className="input bg-gray-100">Loading plans...</div>
+                  ) : subscriptionPlans && subscriptionPlans.length > 0 ? (
+                    <select {...register('subscriptionPlan', { required: 'Please select a plan' })} className="input">
+                      <option value="">Select a plan</option>
+                      {subscriptionPlans.map((plan) => (
+                        <option key={plan.id} value={plan.id}>
+                          {plan.plan_name} - ₹{parseFloat(plan.price).toLocaleString('en-IN')}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="input bg-yellow-50 border border-yellow-200">No plans available. Please contact support.</div>
+                  )}
+                  {errors.subscriptionPlan && <p className="text-red-600 text-sm mt-1">{errors.subscriptionPlan.message}</p>}
                 </div>
 
                 <div>
