@@ -73,19 +73,28 @@ export const AuthProvider = ({ children }) => {
   const register = async (data) => {
     try {
       const response = await authAPI.register(data)
+      console.log('Registration response:', response)
       
       if (response.success) {
         // Automatically login after successful registration
         if (response.data && response.data.token && response.data.user) {
+          console.log('Login token:', response.data.token)
+          console.log('User data:', response.data.user)
+          
+          // Store token and user in localStorage
           localStorage.setItem('authToken', response.data.token)
           localStorage.setItem('user', JSON.stringify(response.data.user))
+          
+          // Update React state
           setUser(response.data.user)
           
-          toast.success('Registration successful!')
+          toast.success('Registration successful! Welcome!')
           
           // Navigate based on role
           if (response.data.user.role === 'system_admin') {
             navigate('/admin')
+          } else if (response.data.user.role === 'organization_owner') {
+            navigate('/dashboard')
           } else {
             navigate('/dashboard')
           }
