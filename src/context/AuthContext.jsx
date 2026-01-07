@@ -75,8 +75,25 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.register(data)
       
       if (response.success) {
-        toast.success('Registration successful! Please login.')
-        navigate('/login')
+        // Automatically login after successful registration
+        if (response.data && response.data.token && response.data.user) {
+          localStorage.setItem('authToken', response.data.token)
+          localStorage.setItem('user', JSON.stringify(response.data.user))
+          setUser(response.data.user)
+          
+          toast.success('Registration successful!')
+          
+          // Navigate based on role
+          if (response.data.user.role === 'system_admin') {
+            navigate('/admin')
+          } else {
+            navigate('/dashboard')
+          }
+        } else {
+          // Fallback: just redirect to login
+          toast.success('Registration successful! Please login.')
+          navigate('/login')
+        }
         return { success: true }
       } else {
         toast.error(response.message || 'Registration failed')
