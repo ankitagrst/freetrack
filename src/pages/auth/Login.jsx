@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { Mail, Lock, BookmarkCheck } from 'lucide-react'
+import { Mail, Lock, BookmarkCheck, Eye, EyeOff } from 'lucide-react'
 
 const Login = () => {
   const { login, isAuthenticated, user } = useAuth()
@@ -13,6 +13,7 @@ const Login = () => {
     rememberMe: false
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     // Pre-fill remembered email
@@ -101,16 +102,23 @@ const Login = () => {
                   <Lock className="h-5 w-5 text-primary" />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   id="password"
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="input pl-10"
+                  className="input pl-10 pr-10"
                   placeholder="Enter your password"
                   required
                   autoComplete="current-password"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-primary transition"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
             </div>
 
